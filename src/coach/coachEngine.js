@@ -1,0 +1,7 @@
+import {COACH_PHRASES} from "./phrases";import {COACH_CATEGORIES as C} from "./categories";import {daysSince,loadCoachMemory,markVisit,rememberPhrase,updateCoachMemory} from "./coachMemory";
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+export function getCoachPhrase(category,{force=false,silenceChance=0,minimumGapMs=0}={}){const m=loadCoachMemory(),now=Date.now();if(!force&&(Number(m.silenceUntil||0)>now||Math.random()<silenceChance||now-Number(m.lastSpokenAt||0)<minimumGapMs))return "";const a=COACH_PHRASES[category]||[],prev=m.lastPhraseByCategory?.[category]||"",pool=a.length>1?a.filter(x=>x!==prev):a,p=pool.length?pick(pool):"";if(p){rememberPhrase(category,p);updateCoachMemory({lastSpokenAt:now})}return p}
+export function getWelcomePhrase(){const m=loadCoachMemory(),d=daysSince(m.lastVisitAt);markVisit();return getCoachPhrase(d!==null&&d>=3?C.RETURN:C.WELCOME,{force:true})}
+export function getFinishRitual(){return [getCoachPhrase(C.FINISH_FIRST,{force:true}),getCoachPhrase(C.FINISH_SECOND,{force:true})]}
+export function listCoachCategories(){return Object.values(C)}export function listPhrases(c){return [...(COACH_PHRASES[c]||[])]}
+export function setCoachSilence(ms=0){updateCoachMemory({silenceUntil:Date.now()+Math.max(0,ms)})}

@@ -1,0 +1,1 @@
+import React from "react";import BottomNav from "./BottomNav";export default function Layout({children}){return <div className="app-shell"><main className="page">{children}</main><BottomNav/></div>}
