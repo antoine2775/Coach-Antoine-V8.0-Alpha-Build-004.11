@@ -33,6 +33,8 @@ function loadRestDuration() {
 }
 
 export default function Workout() {
+  const [dayForm, setDayForm] = useState(null);
+
   const [step, setStep] = useState(0);
   const [remaining, setRemaining] = useState(
     workoutSteps[0].seconds
@@ -41,8 +43,10 @@ export default function Workout() {
   const [finished, setFinished] = useState(false);
 
   const [isResting, setIsResting] = useState(false);
+
   const [restDuration, setRestDuration] =
     useState(loadRestDuration);
+
   const [restRemaining, setRestRemaining] =
     useState(restDuration);
 
@@ -110,6 +114,15 @@ export default function Workout() {
     restDuration,
   ]);
 
+  function chooseDayForm(choice) {
+    setDayForm(choice);
+
+    localStorage.setItem(
+      "coachAntoineDayForm",
+      choice
+    );
+  }
+
   function finishWorkout() {
     setRunning(false);
     setFinished(true);
@@ -126,8 +139,9 @@ export default function Workout() {
         [
           {
             date: new Date().toISOString(),
-            minutes: 5,
-            label: "Séance découverte",
+            minutes: 18,
+            label: "Séance Coach Antoine",
+            dayForm: dayForm,
           },
           ...old,
         ].slice(0, 20)
@@ -157,6 +171,8 @@ export default function Workout() {
   }
 
   function reset() {
+    setDayForm(null);
+
     setStep(0);
     setRemaining(workoutSteps[0].seconds);
     setRunning(false);
@@ -194,6 +210,55 @@ export default function Workout() {
     );
 
     setRestFeedbackDone(true);
+  }
+
+  if (!dayForm) {
+    return (
+      <>
+        <header className="page-header">
+          <p className="eyebrow">AVANT DE COMMENCER</p>
+
+          <h1>Comment tu te sens aujourd'hui ?</h1>
+        </header>
+
+        <section className="workout-card">
+          <CoachAvatar size={180} />
+
+          <p>
+            Dis-moi simplement comment tu te sens.
+            J'en tiendrai compte pour tes séances.
+          </p>
+
+          <div className="workout-actions">
+            <button
+              className="secondary-button"
+              onClick={() => chooseDayForm("low")}
+            >
+              Petite forme
+            </button>
+
+            <button
+              className="secondary-button"
+              onClick={() => chooseDayForm("normal")}
+            >
+              En forme
+            </button>
+
+            <button
+              className="secondary-button"
+              onClick={() => chooseDayForm("high")}
+            >
+              Pleine forme
+            </button>
+          </div>
+
+          <p className="safety-note">
+            Aujourd'hui ne définit pas ton niveau général.
+            C'est simplement ta forme du jour.
+          </p>
+        </section>
+      </>
+    );
   }
 
   if (finished) {
@@ -265,6 +330,7 @@ export default function Workout() {
     <>
       <header className="page-header">
         <p className="eyebrow">SÉANCE DU JOUR</p>
+
         <h1>On y va à ton rythme.</h1>
       </header>
 
