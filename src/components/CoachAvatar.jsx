@@ -1,9 +1,11 @@
 import React from "react";
 
+const BASE = import.meta.env.BASE_URL;
+
 const COACH_IMAGES = {
-  start: "/coach/coach-start.png",
-  active: "/coach/coach-active.png",
-  finish: "/coach/coach-finish.png",
+  start: `${BASE}coach/coach-start.png`,
+  active: `${BASE}coach/coach-active.png`,
+  finish: `${BASE}coach/coach-finish.png`,
 };
 
 export default function CoachAvatar({
