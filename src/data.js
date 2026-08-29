@@ -35,6 +35,7 @@ export const workoutSteps = [
   {
     name: "Mobilité des épaules",
     seconds: 60,
+    target: "8 à 10 rotations dans chaque sens",
     note: "Fais des mouvements lents et confortables.",
     pillar: "mobilite",
     equipment: "none",
@@ -42,6 +43,7 @@ export const workoutSteps = [
   {
     name: "Marche active sur place",
     seconds: 75,
+    target: "Rythme régulier, sans chercher à compter",
     note: "Bouge les bras naturellement et garde un rythme confortable.",
     pillar: "cardio",
     equipment: "none",
@@ -49,6 +51,7 @@ export const workoutSteps = [
   {
     name: "Assis-debout avec chaise",
     seconds: 75,
+    target: "8 à 12 répétitions",
     note: "Pousse dans les jambes et redresse-toi sans précipitation.",
     pillar: "renforcement",
     equipment: "chair",
@@ -56,6 +59,7 @@ export const workoutSteps = [
   {
     name: "Pompes contre un mur",
     seconds: 75,
+    target: "8 à 12 répétitions",
     note: "Garde le corps droit et contrôle le mouvement.",
     pillar: "renforcement",
     equipment: "none",
@@ -63,6 +67,7 @@ export const workoutSteps = [
   {
     name: "Pas latéraux",
     seconds: 75,
+    target: "8 à 10 passages de chaque côté",
     note: "Déplace-toi doucement de droite à gauche, sans te presser.",
     pillar: "cardio",
     equipment: "none",
@@ -70,6 +75,7 @@ export const workoutSteps = [
   {
     name: "Équilibre contrôlé",
     seconds: 75,
+    target: "20 à 30 secondes de chaque côté",
     note: "Place un pied légèrement devant l'autre et stabilise-toi. Appuie-toi si nécessaire.",
     pillar: "equilibre",
     equipment: "none",
@@ -77,6 +83,7 @@ export const workoutSteps = [
   {
     name: "Extension des jambes assis",
     seconds: 75,
+    target: "8 à 10 répétitions par jambe",
     note: "Tends alternativement chaque jambe sans donner d'élan.",
     pillar: "renforcement",
     equipment: "chair",
@@ -84,6 +91,7 @@ export const workoutSteps = [
   {
     name: "Montées sur la pointe des pieds",
     seconds: 75,
+    target: "10 à 15 répétitions",
     note: "Monte doucement, reste stable, puis redescends lentement.",
     pillar: "renforcement",
     equipment: "none",
@@ -91,6 +99,7 @@ export const workoutSteps = [
   {
     name: "Rotations douces du buste",
     seconds: 75,
+    target: "8 à 10 rotations de chaque côté",
     note: "Tourne tranquillement de chaque côté sans forcer.",
     pillar: "mobilite",
     equipment: "none",
@@ -98,6 +107,7 @@ export const workoutSteps = [
   {
     name: "Ouverture de la poitrine",
     seconds: 75,
+    target: "8 à 10 mouvements contrôlés",
     note: "Redresse-toi et ramène doucement les épaules vers l'arrière.",
     pillar: "posture",
     equipment: "none",
@@ -105,6 +115,7 @@ export const workoutSteps = [
   {
     name: "Étirement doux des mollets",
     seconds: 75,
+    target: "25 à 30 secondes par côté",
     note: "Garde le talon au sol et cherche seulement une tension confortable.",
     pillar: "mobilite",
     equipment: "none",
@@ -112,6 +123,7 @@ export const workoutSteps = [
   {
     name: "Respiration et grandissement",
     seconds: 105,
+    target: "5 à 8 respirations lentes",
     note: "Respire lentement, relâche les épaules et termine la séance en te redressant.",
     pillar: "posture",
     equipment: "none",
