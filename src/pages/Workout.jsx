@@ -62,6 +62,18 @@ export default function Workout() {
 
   const cur = workoutSteps[step];
 
+  function getCurrentTarget() {
+    if (dayForm === "low") {
+      return cur.targetLow;
+    }
+
+    if (dayForm === "high") {
+      return cur.targetHigh;
+    }
+
+    return cur.targetNormal;
+  }
+
   const progress = useMemo(() => {
     if (isResting) {
       return (
@@ -113,10 +125,7 @@ export default function Workout() {
           return value - 1;
         }
 
-        if (
-          step <
-          workoutSteps.length - 1
-        ) {
+        if (step < workoutSteps.length - 1) {
           setIsResting(true);
           setRestRemaining(restDuration);
 
@@ -179,10 +188,7 @@ export default function Workout() {
     if (isResting) {
       const nextStep = step + 1;
 
-      if (
-        nextStep <
-        workoutSteps.length
-      ) {
+      if (nextStep < workoutSteps.length) {
         setStep(nextStep);
 
         setRemaining(
@@ -195,10 +201,7 @@ export default function Workout() {
       return;
     }
 
-    if (
-      step <
-      workoutSteps.length - 1
-    ) {
+    if (step < workoutSteps.length - 1) {
       setIsResting(true);
       setRestRemaining(restDuration);
     } else {
@@ -220,9 +223,7 @@ export default function Workout() {
 
     setIsResting(false);
 
-    setRestRemaining(
-      restDuration
-    );
+    setRestRemaining(restDuration);
 
     setRestFeedbackDone(false);
   }
@@ -256,9 +257,7 @@ export default function Workout() {
     setRestFeedbackDone(true);
   }
 
-  /*
-   * ÉCRAN FORME DU JOUR
-   */
+  // FORME DU JOUR
 
   if (!dayForm) {
     return (
@@ -277,9 +276,8 @@ export default function Workout() {
           <CoachAvatar size={180} />
 
           <p>
-            Dis-moi simplement comment tu te
-            sens. J'en tiendrai compte pour tes
-            séances.
+            Dis-moi simplement comment tu te sens.
+            J'en tiendrai compte pour ta séance.
           </p>
 
           <div className="workout-actions">
@@ -312,18 +310,15 @@ export default function Workout() {
           </div>
 
           <p className="safety-note">
-            Aujourd'hui ne définit pas ton
-            niveau général. C'est simplement
-            ta forme du jour.
+            Aujourd'hui ne définit pas ton niveau
+            général. C'est simplement ta forme du jour.
           </p>
         </section>
       </>
     );
   }
 
-  /*
-   * ÉCRAN FIN DE SÉANCE
-   */
+  // FIN DE SÉANCE
 
   if (finished) {
     return (
@@ -336,26 +331,21 @@ export default function Workout() {
 
         <h1>Bravo Antoine !</h1>
 
-        <p>
-          Tu peux être fier de toi.
-        </p>
+        <p>Tu peux être fier de toi.</p>
 
         <blockquote>
-          « On n'a pas rajeuni
-          aujourd'hui… mais on est en
-          meilleure forme qu'hier ! »
+          « On n'a pas rajeuni aujourd'hui…
+          mais on est en meilleure forme qu'hier ! »
         </blockquote>
 
         {!restFeedbackDone ? (
           <>
             <h2>
-              Les pauses t'ont-elles
-              convenu ?
+              Les pauses t'ont-elles convenu ?
             </h2>
 
             <p>
-              Elles duraient{" "}
-              {restDuration} secondes
+              Elles duraient {restDuration} secondes
               aujourd'hui.
             </p>
 
@@ -390,8 +380,8 @@ export default function Workout() {
           </>
         ) : (
           <p>
-            C'est enregistré. Les
-            prochaines pauses dureront{" "}
+            C'est enregistré. Les prochaines
+            pauses dureront{" "}
             <strong>
               {restDuration} secondes
             </strong>
@@ -410,9 +400,7 @@ export default function Workout() {
     );
   }
 
-  /*
-   * ÉCRAN SÉANCE
-   */
+  // SÉANCE
 
   return (
     <>
@@ -446,11 +434,7 @@ export default function Workout() {
             <p>
               Prochain exercice :{" "}
               <strong>
-                {
-                  workoutSteps[
-                    step + 1
-                  ]?.name
-                }
+                {workoutSteps[step + 1]?.name}
               </strong>
             </p>
           </>
@@ -461,7 +445,7 @@ export default function Workout() {
               {workoutSteps.length}
             </span>
 
-           <h2>{cur.name}</h2>
+            <h2>{cur.name}</h2>
 
             <div className="timer">
               {fmt(remaining)}
@@ -469,7 +453,7 @@ export default function Workout() {
 
             <p>
               <strong>
-                Objectif : {cur.target}
+                Objectif : {getCurrentTarget()}
               </strong>
             </p>
 
@@ -482,10 +466,7 @@ export default function Workout() {
             style={{
               width: `${Math.max(
                 0,
-                Math.min(
-                  100,
-                  progress
-                )
+                Math.min(100, progress)
               )}%`,
             }}
           />
@@ -520,9 +501,9 @@ export default function Workout() {
       </section>
 
       <p className="safety-note">
-        Reste dans une amplitude
-        confortable. Arrête l'exercice en
-        cas de douleur ou de malaise.
+        Reste dans une amplitude confortable.
+        Arrête l'exercice en cas de douleur ou de
+        malaise.
       </p>
     </>
   );
