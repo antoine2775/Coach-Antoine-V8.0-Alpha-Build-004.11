@@ -480,6 +480,37 @@ export default function Workout() {
       <section className="workout-card">
         <CoachAvatar size={140} />
 
+        <div className="workout-actions">
+          <button
+            className="secondary-button"
+            onClick={() => {
+              if (running) {
+                measureExercise();
+                exerciseClock.current.startedAt = null;
+              }
+              setRunning((value) => !value);
+            }}
+          >
+            {running ? (
+              <Pause />
+            ) : (
+              <Play />
+            )}
+
+            {running
+              ? "Pause"
+              : "Démarrer"}
+          </button>
+
+          <button
+            className="secondary-button"
+            onClick={next}
+          >
+            <SkipForward />
+            Suivant
+          </button>
+        </div>
+
         {isResting ? (
           <>
             <span className="pill">
@@ -535,36 +566,6 @@ export default function Workout() {
           />
         </div>
 
-        <div className="workout-actions">
-          <button
-            className="secondary-button"
-            onClick={() => {
-              if (running) {
-                measureExercise();
-                exerciseClock.current.startedAt = null;
-              }
-              setRunning((value) => !value);
-            }}
-          >
-            {running ? (
-              <Pause />
-            ) : (
-              <Play />
-            )}
-
-            {running
-              ? "Pause"
-              : "Démarrer"}
-          </button>
-
-          <button
-            className="secondary-button"
-            onClick={next}
-          >
-            <SkipForward />
-            Suivant
-          </button>
-        </div>
       </section>
 
       <p className="safety-note">

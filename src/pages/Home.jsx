@@ -8,8 +8,14 @@ import {
 } from "lucide-react";
 
 import CoachPresence from "../components/CoachPresence";
-import { dailyProgram } from "../data";
 import { getStatistics, readHistory } from "../utils/workoutHistory";
+
+const programBlocks = [
+  { label: "Mise en mouvement", icon: "🧍", description: "Préparer progressivement le corps." },
+  { label: "Renforcement musculaire", icon: "💪", description: "Entretenir force et tonus." },
+  { label: "Équilibre & coordination", icon: "⚖️", description: "Travailler stabilité et contrôle." },
+  { label: "Mobilité, posture & souplesse", icon: "🙆", description: "Conserver de l’aisance et terminer en douceur." },
+];
 
 export default function Home() {
   const nav = useNavigate();
@@ -40,21 +46,23 @@ export default function Home() {
       </button>
 
       <section className="card">
-        <div className="section-title">
+        <div className="section-title" style={{ flexWrap: "wrap" }}>
           <div>
             <p className="eyebrow">AUJOURD'HUI</p>
             <h2>Programme du jour</h2>
           </div>
 
-          <span className="pill">≈ 18 min</span>
         </div>
+        <p className="muted" style={{ color: "#243B53", fontSize: "16px" }}>Coach Antoine va te préparer la bonne séance pour aujourd’hui.</p>
 
         <div className="program-list">
-          {dailyProgram.map((x) => (
-            <div className="program-row" key={x.label}>
+          {programBlocks.map((x) => (
+            <div className="program-row" key={x.label} style={{ gridTemplateColumns: "42px minmax(0, 1fr)" }}>
               <span className="program-icon">{x.icon}</span>
-              <strong>{x.label}</strong>
-              <span>{x.minutes} min</span>
+              <div>
+                <strong>{x.label}</strong>
+                <p className="muted" style={{ margin: "4px 0 0", color: "#243B53", fontSize: "16px" }}>{x.description}</p>
+              </div>
             </div>
           ))}
         </div>
