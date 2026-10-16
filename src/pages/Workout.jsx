@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pause,
   Play,
@@ -9,6 +9,7 @@ import {
 import CoachAvatar from "../components/CoachAvatar";
 import { workoutSteps } from "../data";
 import { playRiff } from "../utils/sound";
+import { HISTORY_KEY, readHistory } from "../utils/workoutHistory";
 
 const DEFAULT_REST = 15;
 const MIN_REST = 10;
@@ -48,6 +49,12 @@ export default function Workout() {
 
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("pending");
+  const session = useRef(null);
+  const finalizationStarted = useRef(false);
+  const saveInProgress = useRef(false);
+  const saved = useRef(false);
+  const exerciseClock = useRef({ step: 0, startedAt: null, seconds: 0, total: 0 });
 
   const [isResting, setIsResting] = useState(false);
 
@@ -94,60 +101,124 @@ export default function Workout() {
     isResting,
   ]);
 
+  const measureExercise = useCallback(() => {
+    const clock = exerciseClock.current;
+    if (clock.startedAt === null) return;
+    const now = performance.now();
+    const elapsed = Math.min(
+      Math.max(0, (now - clock.startedAt) / 1000),
+      Math.max(0, workoutSteps[clock.step].seconds - clock.seconds)
+    );
+    clock.seconds += elapsed;
+    clock.total += elapsed;
+    clock.startedAt = now;
+    setRemaining(Math.max(0, Math.ceil(workoutSteps[clock.step].seconds - clock.seconds)));
+  }, []);
+
+  const saveWorkout = useCallback(() => {
+    if (!session.current || saveInProgress.current || saved.current) return;
+    saveInProgress.current = true;
+    setSaveStatus("pending");
+
+    try {
+      const { history, error } = readHistory();
+      if (error) throw new Error("Invalid history");
+
+      if (!history.some((entry) => entry?.id === session.current.id)) {
+        localStorage.setItem(
+          HISTORY_KEY,
+          JSON.stringify([session.current, ...history])
+        );
+      }
+
+      saved.current = true;
+      setSaveStatus("saved");
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      saveInProgress.current = false;
+    }
+  }, []);
+
+  const finishWorkout = useCallback(() => {
+    if (finalizationStarted.current || !session.current) return;
+    finalizationStarted.current = true;
+    measureExercise();
+    exerciseClock.current.startedAt = null;
+    setRunning(false);
+    setFinished(true);
+
+    session.current = {
+      ...session.current,
+      date: new Date().toISOString(),
+      activeSeconds: exerciseClock.current.total,
+      label: "Séance Coach Antoine",
+      dayForm,
+    };
+
+    // Le son ne fait pas partie de la sauvegarde : une tentative ne le rejoue pas.
+    try {
+      if (localStorage.getItem("coachAntoineSound") !== "off") {
+        playRiff("finish");
+      }
+    } catch {
+      // Une erreur audio ou de préférence ne doit pas empêcher la sauvegarde.
+    }
+    saveWorkout();
+  }, [dayForm, saveWorkout, measureExercise]);
+
+  useEffect(() => {
+    if (!running || finished || isResting || finalizationStarted.current) return;
+    const clock = exerciseClock.current;
+    if (clock.step !== step) {
+      clock.step = step;
+      clock.seconds = 0;
+    }
+    if (clock.startedAt === null) clock.startedAt = performance.now();
+  }, [running, finished, isResting, step]);
+
   useEffect(() => {
     if (!running || finished) return;
 
     const timer = setInterval(() => {
       if (isResting) {
-        setRestRemaining((value) => {
-          if (value > 1) {
-            return value - 1;
-          }
-
-          const nextStep = step + 1;
-
-          setStep(nextStep);
-
-          setRemaining(
-            workoutSteps[nextStep].seconds
-          );
-
-          setIsResting(false);
-
-          return restDuration;
-        });
-
-        return;
+        setRestRemaining((value) => Math.max(0, value - 1));
+      } else {
+        if (!finalizationStarted.current) measureExercise();
       }
-
-      setRemaining((value) => {
-        if (value > 1) {
-          return value - 1;
-        }
-
-        if (step < workoutSteps.length - 1) {
-          setIsResting(true);
-          setRestRemaining(restDuration);
-
-          return 0;
-        }
-
-        finishWorkout();
-
-        return 0;
-      });
     }, 1000);
 
     return () => clearInterval(timer);
   }, [
     running,
     finished,
-    step,
     isResting,
-    restDuration,
+    measureExercise,
   ]);
 
+  useEffect(() => {
+    if (!running || finished || finalizationStarted.current) return;
+
+    if (isResting) {
+      if (restRemaining > 0) return;
+      const nextStep = step + 1;
+      setStep(nextStep);
+      setRemaining(workoutSteps[nextStep].seconds);
+      setIsResting(false);
+      setRestRemaining(restDuration);
+    } else if (remaining === 0) {
+      if (step < workoutSteps.length - 1) {
+        exerciseClock.current.startedAt = null;
+        setIsResting(true);
+        setRestRemaining(restDuration);
+      } else {
+        finishWorkout();
+      }
+    }
+  }, [running, finished, isResting, restRemaining, remaining, step, restDuration, finishWorkout]);
+
   function chooseDayForm(choice) {
+    if (!session.current) session.current = { id: crypto.randomUUID() };
     setDayForm(choice);
 
     localStorage.setItem(
@@ -156,35 +227,10 @@ export default function Workout() {
     );
   }
 
-  function finishWorkout() {
-    setRunning(false);
-    setFinished(true);
-
-    playRiff("finish");
-
-    const old = JSON.parse(
-      localStorage.getItem(
-        "coachAntoineHistory"
-      ) || "[]"
-    );
-
-    localStorage.setItem(
-      "coachAntoineHistory",
-      JSON.stringify(
-        [
-          {
-            date: new Date().toISOString(),
-            minutes: 18,
-            label: "Séance Coach Antoine",
-            dayForm: dayForm,
-          },
-          ...old,
-        ].slice(0, 20)
-      )
-    );
-  }
-
   function next() {
+    if (finalizationStarted.current) return;
+    measureExercise();
+    exerciseClock.current.startedAt = null;
     if (isResting) {
       const nextStep = step + 1;
 
@@ -210,6 +256,12 @@ export default function Workout() {
   }
 
   function reset() {
+    exerciseClock.current = { step: 0, startedAt: null, seconds: 0, total: 0 };
+    session.current = null;
+    finalizationStarted.current = false;
+    saveInProgress.current = false;
+    saved.current = false;
+    setSaveStatus("pending");
     setDayForm(null);
 
     setStep(0);
@@ -332,6 +384,17 @@ export default function Workout() {
         <h1>Bravo Antoine !</h1>
 
         <p>Tu peux être fier de toi.</p>
+
+        <p role="status">
+          {saveStatus === "pending" && "Enregistrement de la séance…"}
+          {saveStatus === "saved" && "Séance enregistrée."}
+          {saveStatus === "error" && "La séance est terminée, mais son enregistrement a échoué."}
+        </p>
+        {saveStatus === "error" && (
+          <button className="secondary-button" onClick={saveWorkout}>
+            Réessayer l'enregistrement
+          </button>
+        )}
 
         <blockquote>
           « On n'a pas rajeuni aujourd'hui…
@@ -475,9 +538,13 @@ export default function Workout() {
         <div className="workout-actions">
           <button
             className="secondary-button"
-            onClick={() =>
-              setRunning((v) => !v)
-            }
+            onClick={() => {
+              if (running) {
+                measureExercise();
+                exerciseClock.current.startedAt = null;
+              }
+              setRunning((value) => !value);
+            }}
           >
             {running ? (
               <Pause />
