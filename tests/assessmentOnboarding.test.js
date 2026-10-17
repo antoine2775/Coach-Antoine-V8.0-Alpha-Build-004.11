@@ -300,6 +300,11 @@ test("questionnaire à l'écran : sauvegarde, recharge, Retour et modification",
 for (const mode of ["tu", "vous"]) {
   test(`proposition ${mode} acceptée explicitement, arrêt au conteneur suivant`, () => {
     const ui = setup(proposal(Array(9).fill("b"), mode));
+    const expected = mode === "vous"
+      ? "Si vous êtes d’accord, on part avec ce niveau. Sinon, sélectionnez celui qui vous convient."
+      : "Si tu es d’accord, on part avec ce niveau. Sinon, sélectionne celui qui te convient.";
+    assert.equal(ASSESSMENT_MESSAGES[mode].proposalDetails[0], expected);
+    assert.ok(ui.text().includes(expected));
     ASSESSMENT_MESSAGES[mode].proposalDetails.forEach((paragraph) => assert.ok(ui.text().includes(paragraph)));
     assert.equal(ui.profile().selectedLevel, null);
     ui.click("Ça me convient");

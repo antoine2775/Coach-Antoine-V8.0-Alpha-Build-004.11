@@ -17,7 +17,7 @@ export const ASSESSMENT_MESSAGES = {
     ],
     proposal: (level) => `D’après tes réponses, je te propose de commencer au niveau ${level}.`,
     proposalDetails: [
-      "Si cela te convient, on part avec ce niveau. Sinon, sélectionne celui qui te convient.",
+      "Si tu es d’accord, on part avec ce niveau. Sinon, sélectionne celui qui te convient.",
       "Tu pourras à tout moment choisir un niveau plus facile si celui-ci est trop exigeant pour toi.",
       "Au fil du temps, je pourrai te proposer de faire évoluer ton niveau. Mais tu pourras également le changer toi-même à tout moment.",
       "Dans tous les cas, c’est toujours toi qui décideras.",
@@ -40,7 +40,7 @@ export const ASSESSMENT_MESSAGES = {
     ],
     proposal: (level) => `D’après vos réponses, je vous propose de commencer au niveau ${level}.`,
     proposalDetails: [
-      "Si cela vous convient, on part avec ce niveau. Sinon, sélectionnez celui qui vous convient.",
+      "Si vous êtes d’accord, on part avec ce niveau. Sinon, sélectionnez celui qui vous convient.",
       "Vous pourrez à tout moment choisir un niveau plus facile si celui-ci est trop exigeant pour vous.",
       "Au fil du temps, je pourrai vous proposer de faire évoluer votre niveau. Mais vous pourrez également le changer vous-même à tout moment.",
       "Dans tous les cas, c’est toujours vous qui déciderez.",

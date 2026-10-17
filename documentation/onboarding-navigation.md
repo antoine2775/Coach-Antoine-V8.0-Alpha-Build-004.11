@@ -1,10 +1,10 @@
-# Onboarding V1 — Lots 4A, 4B et 4C
+# Onboarding V1 — Lots 4A à 4D
 
 Le lot 4A fournit le conteneur et le garde de navigation. Le lot 4B rend utilisables
 les cinq premières étapes : introduction/tu-vous, explication, sexe, prénom et âge.
 Le lot 4C ajoute sécurité, matériel, neuf questions et proposition/choix du niveau.
-Le parcours s'arrête au conteneur Expérience (index 18) : un onboarding ne peut pas
-encore être terminé depuis l'interface. Aucune complétion automatique n'est ajoutée.
+Le lot 4D ajoute expérience, raison facultative d'arrêt, conclusion et finalisation
+explicite du profil. Le parcours V1 peut maintenant être terminé depuis l'interface.
 
 ## Parcours
 
@@ -56,11 +56,11 @@ Les indices de `steps.js` sont persistants et ne doivent pas être réordonnés 
 | 19 | stop-reason | Motif optionnel, si expérience stopped |
 | 20 | finish | Première séance maintenant ou plus tard |
 
-La condition `stopped` est une métadonnée ; le futur parcours implémentera le saut
-de l'étape 19 lorsqu'elle n'est pas pertinente. Les étapes 0 à 4 utilisent les
+La condition `stopped` détermine le passage par l'étape 19 ; elle est sautée pour
+`current` et `never`. Les étapes 0 à 4 utilisent les
 composants du registre `EarlySteps.jsx`, les étapes 5 à 17 ceux de `AssessmentSteps.jsx`.
-À partir de l'étape 18, `PendingStep` reste un conteneur sans collecte de données ni
-avancée. Le bouton Retour de l'étape 18 permet de revoir le niveau. Aucune modification
+Les étapes 18 à 20 utilisent `CompletionSteps.jsx`. Le bouton Retour de l'étape 18
+permet de revoir le niveau. Aucune modification
 des séances, durées ou règles de matériel dans la préparation des séances.
 
 ## Écrans du lot 4B
@@ -126,7 +126,7 @@ des séances, durées ou règles de matériel dans la préparation des séances.
   L'acceptation enregistre `selectedLevel = proposedLevel`, `levelOrigin = "coach"`.
   Le choix manuel enregistre `levelOrigin = "manual"`, même si identique au proposé.
   Aucun niveau n'est choisi avant validation explicite. Les deux chemins atteignent
-  seulement le conteneur Expérience, toujours avec `onboardingCompleted: false`.
+  l'écran Expérience, toujours avec `onboardingCompleted: false`.
 - `safetyConfirmed` est une confirmation de parcours, pas une évaluation médicale.
   Le contexte et la persistance du profil restent inchangés. La forme du jour, les
   pauses et l'historique ne sont jamais écrits par ces nouveaux écrans.
@@ -166,7 +166,7 @@ de localStorage n'empêche pas d'atteindre l'état d'erreur du profil.
 
 ## Contrôles
 
-`node --test tests/*.test.js` couvre les lots 1, 3, 4A, 4B et 4C. Les tests vérifient
+`node --test tests/*.test.js` couvre les lots 1, 3 et 4A à 4D. Les tests vérifient
 les états, les 21 indices de reprise, les pages protégées et accessibles, le
 sous-chemin Vite, le rendu des erreurs, le splash neutre et les mises à jour du
 contexte (dont échec de sauvegarde). La reprise est aussi testée pour une étape 0,
@@ -230,9 +230,9 @@ artificiellement terminé, aucune suppression de données nécessaire.
 6. Après Q9, recharger sur la proposition : le niveau proposé reste visible sans
    être accepté automatiquement. Retour vers Q9 permet de modifier la réponse :
    après neuf premières réponses, choisir la troisième à Q9 fait passer Tonique à Forme.
-7. « Ça me convient » atteint le conteneur Expérience. Retour permet de revoir la
+7. « Ça me convient » atteint l'écran Expérience. Retour permet de revoir la
    proposition, puis « Je préfère choisir mon niveau » propose les trois niveaux.
-   Après choix et validation, même arrêt au conteneur Expérience. Un choix manuel
+   Après choix et validation, même arrivée à l'écran Expérience. Un choix manuel
    identique au proposé garde l'origine manual.
 8. Dans le profil, vérifier les neuf valeurs a/b/c, la date, la version, les niveaux
    proposé/sélectionné et l'origine. La complétion doit toujours être fausse.
@@ -245,5 +245,68 @@ nouveaux écrans ont aussi utilisé une prévisualisation statique temporaire su
 avec données fictives uniquement en mémoire et aucun accès à localStorage. Ce serveur
 et son onglet ont été arrêtés ; aucun outil de contournement n'est intégré au projet.
 
-Avant la suite : valider visuellement ce lot, puis définir l'expérience antérieure,
-la raison d'abandon et les conditions de fin. Les séances restent celles existantes.
+## Fin du parcours — lot 4D
+
+`completionSteps.js` prépare les patches ; `completionMessages.js` contient les
+textes tu/vous ; `CompletionSteps.jsx` affiche les trois derniers écrans.
+Le contexte et `userProfile.js` restent les seuls responsables de la persistance.
+
+- Expérience : `current` et `never` vont directement à la conclusion (20) ; `stopped`
+  mène à la raison (19). Aucun nom d'application ni question supplémentaire.
+- Les sept raisons ont des valeurs stables : `notSupportedEnough`, `lackOfMotivation`,
+  `tooDifficult`, `tooLong`, `tooRepetitive`, `preferNotToSay`, `other`, dans cet ordre.
+  « Passer cette question » sauvegarde `null`. Aucun texte libre pour `other`.
+- Retour de la conclusion va à 19 si `stopped`, sinon 18. De 19, il revient à 18 ;
+  de 18, à la proposition (17). La raison reste présente si l'expérience reste
+  `stopped` ; elle est effacée si elle devient `current` ou `never`.
+- Ni expérience ni raison ne modifient les niveaux. La conclusion affiche le vrai
+  prénom et les textes fournis, sans déduire d'émotion ou de réaction personnalisée.
+- La conclusion et ses boutons nécessitent un profil finalisable : validation
+  `validateProfile({...profile, onboardingCompleted: true})` du lot 1, âge adulte,
+  sécurité confirmée et proposition cohérente avec le questionnaire du lot 4C.
+  Un profil incomplet affiche une erreur et Retour, sans finalisation.
+- Aucun écran ni rechargement ne termine le profil automatiquement. Seul un clic
+  sur l'un des deux choix finaux sauvegarde `onboardingCompleted: true`.
+- Un verrou immédiat évite deux soumissions finales. La navigation n'a lieu qu'après
+  le résultat `saved` ; un échec conserve le profil incomplet et autorise une tentative.
+- « Pas maintenant » ouvre `/`. « Oui, c’est parti ! » ouvre `/seances` avec remplacement
+  de la route. Le garde existant autorise alors ces pages. Le montage de Workout
+  commence déjà par le choix Petite forme / En forme / Pleine forme : aucune modification
+  de `Workout.jsx`, d'App, du contexte ou du moteur de séance n'est nécessaire.
+- Après rechargement, le splash reste normal ; à l'accueil, il conduit à l'accueil.
+  Une route directe comme `/seances` reste accessible et conserve sa destination.
+  L'onboarding ne réapparaît plus pour un profil terminé valide.
+- Aucune nouvelle clé localStorage, aucune migration, aucune écriture dans les
+  réglages, la forme du jour ou l'historique des séances.
+
+Le texte de conclusion demandé annonce des séances adaptées. Leur adaptation réelle
+au niveau et au matériel reste un travail ultérieur : le lot 4D conserve le programme
+actuel et n'implémente aucun nouveau moteur, rappel, son ou préférence d'exercice.
+
+### Test visuel local du lot 4D
+
+Ouvrir le serveur local sur le port 5174, chemin habituel `/onboarding`. Utiliser le
+profil incomplet du lot 4C, ou un nouveau parcours dans une fenêtre privée. Ne jamais
+forcer `onboardingCompleted` dans le stockage. Fermer toutes les fenêtres privées
+avant un nouveau cas pour repartir avec un stockage privé indépendant.
+
+1. **current** : choisir « Oui, et je l’utilise encore » ; vérifier l'arrivée directe
+   à la conclusion. Recharger et fermer le splash : même conclusion, pas encore
+   d'onboarding terminé. Choisir « Pas maintenant » : accueil. Recharger : splash,
+   puis accueil sans onboarding.
+2. **stopped** : dans un autre parcours privé, choisir « Oui, mais j’ai arrêté ».
+   Recharger sur les raisons, vérifier la reprise. Choisir une raison, Retour :
+   sélection conservée. Retour encore : expérience. Rechoisir stopped conserve la
+   raison ; choisir current ou never l'efface et saute la question. Vérifier aussi
+   « Passer cette question » et « Autre raison » sans champ de texte.
+3. **never** : choisir « Non, jamais vraiment » : conclusion directe. Retour revient
+   à l'expérience. Choisir à nouveau puis « Oui, c’est parti ! » : choix de forme du
+   jour avant tout exercice. Aucun démarrage ou enregistrement de séance automatique.
+4. **vous** : refaire le parcours en vouvoiement, vérifier expérience, raison et
+   conclusion avec le prénom saisi. Les libellés des réponses restent identiques.
+
+Les tests du lot 4D utilisent uniquement un stockage fictif isolé et finalisent via
+les vraies transitions et fonctions du profil. Ils couvrent les branches, raisons,
+retours, reprises, textes, refus de profil invalide, échec d'écriture, double clic et
+navigation après sauvegarde. Les tests de routes vérifient aussi l'accès réel aux
+pages d'accueil et de choix de forme après finalisation et relecture.

@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { ONBOARDING_STEPS } from "../src/onboarding/steps.js";
 import { QUESTIONS } from "../src/onboarding/questions.js";
+import { prepareCompletionStep } from "../src/onboarding/completionSteps.js";
 import { getOnboardingState } from "../src/onboarding/onboardingState.js";
 import * as profiles from "../src/utils/userProfile.js";
 
@@ -155,6 +156,28 @@ test("garde compatible avec le sous-chemin Vite", () => {
   assert.match(renderRoutes(stateFrom(storageWith()), `${base}/seances`, base), /Faisons connaissance/);
   assert.match(renderRoutes(stateFrom(storageWith(completedProfile())), `${base}/seances`, base), /Comment tu te sens/);
 });
+
+for (const [choice, expected] of [["later", "Programme du jour"], ["now", "Comment tu te sens"]]) {
+  test(`sortie ${choice} : profil réellement finalisé, destination accessible après relecture`, () => {
+    const profile = { ...completedProfile(), proposedLevel: "forme", selectedLevel: "forme",
+      safetyConfirmed: true, onboardingCurrentStep: 20, onboardingCompleted: false };
+    const storage = storageWith(profile);
+    const result = prepareCompletionStep(profile, "finish", choice);
+    assert.equal(result.ok, true);
+    assert.equal(profiles.updateProfile(result.changes, storage).status, "saved");
+    const state = stateFrom(storage);
+    assert.equal(state.status, "complete");
+    const html = renderRoutes(state, result.destination);
+    assert.ok(html.includes(expected));
+    assert.match(html, /bottom-nav/);
+    assert.doesNotMatch(html, /Faisons connaissance/);
+    if (choice === "now") {
+      for (const text of ["Petite forme", "En forme", "Pleine forme"]) assert.ok(html.includes(text));
+      assert.doesNotMatch(html, /Suivant/);
+    }
+    assert.match(renderRoutes(stateFrom(storage), "/"), /Programme du jour/);
+  });
+}
 
 // Petit exécuteur de hooks pour vérifier les effets et mises à jour du provider.
 // La validation/persistance réelle du lot 1 est injectée, pas réimplémentée.
