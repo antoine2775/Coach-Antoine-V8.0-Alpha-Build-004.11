@@ -31,8 +31,8 @@ export default function SplashScreen({ onDone, soundEnabled }) {
       </p>
 
       <div className="splash__message" aria-live="polite">
-        {line >= 1 && <strong>Bonjour Antoine !</strong>}
-        {line >= 2 && <span>Prêt ?</span>}
+        {line >= 1 && <strong>Bienvenue !</strong>}
+        {line >= 2 && <span>Un moment pour bouger.</span>}
       </div>
 
       {line >= 2 && (
