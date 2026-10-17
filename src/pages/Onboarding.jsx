@@ -3,7 +3,8 @@ import { useUserProfile } from "../context/UserProfileContext";
 import { ONBOARDING_STEPS } from "../onboarding/steps";
 import CoachAvatar from "../components/CoachAvatar";
 import EarlySteps, { EARLY_STEP_IDS } from "../components/onboarding/EarlySteps";
-import { prepareEarlyStep } from "../onboarding/earlySteps";
+import AssessmentSteps, { ASSESSMENT_STEP_IDS } from "../components/onboarding/AssessmentSteps";
+import { prepareAssessmentStep } from "../onboarding/assessmentSteps";
 
 const errors = {
   invalid: "Le profil enregistré est invalide ou illisible. Il n’a pas été remplacé.",
@@ -12,20 +13,20 @@ const errors = {
   "invalid-step": "L’étape enregistrée n’est pas reconnue. Le profil et les réponses ont été conservés.",
 };
 
-// Les étapes au-delà de l'âge restent des conteneurs, sans validation ni avancée.
-function PendingStep({ step, updateUserProfile }) {
+// L'expérience et les étapes suivantes restent des conteneurs, sans avancée.
+function PendingStep({ step, profile, updateUserProfile }) {
   return <>
     <p className="eyebrow">Étape {step.index + 1} sur {ONBOARDING_STEPS.length}</p>
     <h2 id="onboarding-step-title">{step.title}</h2>
     <p>Le parcours initial est en cours de préparation.</p>
-    {step.id === "safety" && <button type="button" className="secondary-button" onClick={() => {
-      updateUserProfile(prepareEarlyStep("back", step.index).changes);
+    {step.id === "previous-experience" && <button type="button" className="secondary-button" onClick={() => {
+      updateUserProfile(prepareAssessmentStep(profile, "back").changes);
     }}>Retour</button>}
   </>;
 }
 
 export default function Onboarding() {
-  const { onboarding, saveError, reloadProfile, updateUserProfile } = useUserProfile();
+  const { onboarding, profile, saveError, reloadProfile, updateUserProfile } = useUserProfile();
   const error = errors[onboarding.status];
   return <main className="page" data-onboarding-status={onboarding.status}>
     <header className="page-header">
@@ -44,7 +45,9 @@ export default function Onboarding() {
           <div className="onboarding-content">
             {EARLY_STEP_IDS.includes(onboarding.step.id)
               ? <EarlySteps step={onboarding.step} />
-              : <PendingStep step={onboarding.step} updateUserProfile={updateUserProfile} />}
+              : ASSESSMENT_STEP_IDS.includes(onboarding.step.id)
+                ? <AssessmentSteps step={onboarding.step} />
+                : <PendingStep step={onboarding.step} profile={profile} updateUserProfile={updateUserProfile} />}
           </div>
         </section>
       </div>}

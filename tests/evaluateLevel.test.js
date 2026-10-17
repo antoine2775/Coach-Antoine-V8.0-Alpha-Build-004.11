@@ -31,9 +31,9 @@ test("textes des neuf questions et de leurs réponses strictement conformes", ()
     ["Te lever plusieurs fois de suite d’une chaise sans utiliser les mains te paraît :", "Facile", "Faisable", "Trop fatiguant"],
     ["Rester debout sur une jambe uniquement, pendant 5 secondes, te paraît :", "Facile", "Faisable", "Difficile"],
     ["Debout, tourner le haut du corps pour regarder derrière toi, sans déplacer les pieds, te paraît :", "Facile", "Faisable, mais avec un peu de raideur", "Difficile"],
-    ["En ce moment, à quelle fréquence pratiques-tu une activité pour entretenir ta forme ?", "3 fois par semaine ou plus", "1 à 2 fois par semaine", "Rarement ou jamais"],
-    ["Fais-tu des exercices pour entretenir ou renforcer tes muscles ?", "Oui, régulièrement", "De temps en temps", "Rarement ou jamais"],
-    ["Fais-tu des exercices pour entretenir ta souplesse ou ta mobilité ?", "Oui, régulièrement", "De temps en temps", "Rarement ou jamais"],
+    ["En ce moment, à quelle fréquence fais-tu une activité physique pour entretenir ta forme générale ?", "3 fois par semaine ou plus", "1 à 2 fois par semaine", "Rarement ou jamais"],
+    ["Et plus précisément, fais-tu des exercices pour entretenir ou renforcer tes muscles ?", "Oui, régulièrement", "De temps en temps", "Rarement ou jamais"],
+    ["Et des exercices pour entretenir ta souplesse ou ta mobilité ?", "Oui, régulièrement", "De temps en temps", "Rarement ou jamais"],
     ["As-tu déjà pratiqué régulièrement une activité pour entretenir ta forme ?", "Oui, et encore récemment", "Oui, mais il y a quelque temps", "Non, jamais vraiment"],
     ["Faire régulièrement une séance d’exercices d’environ 20 minutes te semblerait :", "Facile", "Tout à fait raisonnable", "Assez exigeant"],
   ]);

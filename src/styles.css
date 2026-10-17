@@ -630,6 +630,20 @@
 .onboarding-actions .secondary-button { width: 100%; min-height: 52px; margin-top: 0; line-height: 1.4; }
 .onboarding-content [role="alert"] { margin-top: 16px; }
 .onboarding-content input[aria-invalid="true"] { border-color: #a52a2a; }
+.onboarding-options { display: grid; gap: 12px; }
+.onboarding-check {
+  display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 12px;
+  border: 1px solid #cad8e7; border-radius: 14px; background: #fafdff;
+  color: #243b53; font-size: 16px; line-height: 1.5; cursor: pointer;
+}
+.onboarding-check input { width: 24px; height: 24px; flex-shrink: 0; accent-color: #1565c0; }
+.onboarding-actions button[aria-pressed="true"] { outline: 2px solid #1565c0; outline-offset: 2px; }
+.onboarding-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.onboarding-question-progress { height: 5px; background: #e5edf6; border-radius: 8px; margin-bottom: 24px; overflow: hidden; }
+.onboarding-question-progress div { height: 100%; background: #1976d2; }
+.onboarding-proposal { animation: onboarding-reveal .35s ease-out; }
+@keyframes onboarding-reveal { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .onboarding-proposal { animation: none; } }
 @media (max-width: 600px) {
   .onboarding-stage { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px; }
   .onboarding-avatar { justify-self: center; }

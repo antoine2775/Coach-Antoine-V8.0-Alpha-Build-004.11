@@ -7,6 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { ONBOARDING_STEPS } from "../src/onboarding/steps.js";
+import { QUESTIONS } from "../src/onboarding/questions.js";
 import { getOnboardingState } from "../src/onboarding/onboardingState.js";
 import * as profiles from "../src/utils/userProfile.js";
 
@@ -121,10 +122,12 @@ for (const route of ["/", "/seances", "/progression", "/carnet", "/coach", "/gar
   });
 }
 
-test("conteneur reprend l'étape mémorisée sans afficher les futurs formulaires", () => {
+test("le questionnaire reprend la question mémorisée sans afficher les étapes suivantes", () => {
   const html = renderRoutes(stateFrom(storageWith({ ...profiles.createEmptyProfile(), onboardingCurrentStep: 10 })), "/seances");
   assert.match(html, /data-onboarding-resuming="true"/);
-  assert.match(html, /Question 3 sur 9/);
+  assert.ok(html.includes(QUESTIONS[2].text));
+  assert.match(html, /role="progressbar"/);
+  assert.doesNotMatch(html, /Question 3 sur 9/);
   assert.doesNotMatch(html, /<input|<select|Terminer/);
 });
 

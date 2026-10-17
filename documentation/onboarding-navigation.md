@@ -1,9 +1,10 @@
-# Onboarding V1 — Lots 4A et 4B
+# Onboarding V1 — Lots 4A, 4B et 4C
 
 Le lot 4A fournit le conteneur et le garde de navigation. Le lot 4B rend utilisables
 les cinq premières étapes : introduction/tu-vous, explication, sexe, prénom et âge.
-La suite reste un conteneur : un onboarding ne peut pas encore être terminé depuis
-l'interface. Aucun contournement ni complétion automatique n'est ajouté.
+Le lot 4C ajoute sécurité, matériel, neuf questions et proposition/choix du niveau.
+Le parcours s'arrête au conteneur Expérience (index 18) : un onboarding ne peut pas
+encore être terminé depuis l'interface. Aucune complétion automatique n'est ajoutée.
 
 ## Parcours
 
@@ -32,6 +33,8 @@ stockage. Pour sauvegarder une future étape validée, transmettre ensemble ses 
 et `onboardingCurrentStep` à `updateUserProfile`. Le lot 4B prépare ces mises à jour
 dans `earlySteps.js`, sans réimplémenter le stockage ni relâcher la garde de
 complétion du lot 1. Les écrans n'avancent qu'après une sauvegarde réussie.
+Les transitions du lot 4C sont préparées dans `assessmentSteps.js`, sans nouvelle
+clé de stockage ni modification du module de profil du lot 1.
 
 ## Séquence réservée
 
@@ -55,9 +58,10 @@ Les indices de `steps.js` sont persistants et ne doivent pas être réordonnés 
 
 La condition `stopped` est une métadonnée ; le futur parcours implémentera le saut
 de l'étape 19 lorsqu'elle n'est pas pertinente. Les étapes 0 à 4 utilisent les
-composants séparés du registre `EarlySteps.jsx`. À partir de l'étape 5, `PendingStep`
-reste un conteneur : ni validation sécurité, ni questionnaire, ni évaluation, ni
-règle de matériel ne sont construits. Pas de modification des séances ou durées.
+composants du registre `EarlySteps.jsx`, les étapes 5 à 17 ceux de `AssessmentSteps.jsx`.
+À partir de l'étape 18, `PendingStep` reste un conteneur sans collecte de données ni
+avancée. Le bouton Retour de l'étape 18 permet de revoir le niveau. Aucune modification
+des séances, durées ou règles de matériel dans la préparation des séances.
 
 ## Écrans du lot 4B
 
@@ -75,7 +79,7 @@ règle de matériel ne sont construits. Pas de modification des séances ou dur�
   Elle reste à l'étape 3 jusqu'au bouton Continuer. Après rechargement à cet endroit,
   le prénom est prérempli et peut être validé à nouveau.
 - L'âge est un entier strictement positif. À partir de 18 ans, il est enregistré
-  et le parcours atteint le conteneur Sécurité (index 5), sans pouvoir avancer.
+  et le parcours atteint Sécurité (index 5).
 - En dessous de 18 ans, l'écran affiche le blocage, sans bouton Continuer. L'âge
   mineur n'est jamais passé à la persistance : `age` est remis à `null` (y compris
   après correction d'un ancien âge adulte), l'étape reste 4 et la complétion reste
@@ -83,11 +87,49 @@ règle de matériel ne sont construits. Pas de modification des séances ou dur�
   de blocage supplémentaire n'est stocké. Après rechargement, l'âge est redemandé.
   « Corriger l'âge » permet de rectifier une saisie ; Retour revient au prénom.
 - Retour sauvegarde l'index précédent sans effacer les autres réponses. Dans la
-  réaction au prénom, Retour rouvre simplement son champ. Depuis le conteneur
-  Sécurité, seul Retour vers l'âge est disponible ; aucun écran suivant n'est créé.
+  réaction au prénom, Retour rouvre simplement son champ. Sécurité permet de revenir
+  à l'âge sans effacer les autres informations.
 - Une erreur d'écriture ne produit ni avancée ni réaction de succès. Le blocage
   mineur reste affiché même si la sauvegarde de `age: null` échoue ; l'erreur de
   sauvegarde est alors visible et les données précédentes ne sont pas remplacées.
+
+## Écrans du lot 4C
+
+- Sécurité : le texte provisoire fourni est affiché dans les deux modes d'adresse.
+  La case « J’ai lu et je confirme » est obligatoire, le bouton Continuer est sinon
+  désactivé et la transition refuse aussi une confirmation autre que `true`.
+  Seul `safetyConfirmed: true` est ajouté au profil comme extension JSON compatible
+  avec le lot 1. Aucun diagnostic, limitation ou détail médical n'est demandé.
+  La case n'est pas présentée comme une décharge. Le texte devra être revu
+  juridiquement avant commercialisation. Il n'est pas rendu définitif par ce lot.
+- Matériel : `equipment` reste une liste d'équipements sportifs. La sélection est
+  sauvegardée immédiatement à l'étape 6, puis Continuer avance à l'introduction.
+  Aucun matériel = `[]` ; sélectionner cette option vide les autres choix. Choisir
+  un équipement annule « aucun ». Chaise, mur et support ordinaire ne figurent pas
+  dans la liste du matériel sportif. Plusieurs équipements sont possibles.
+- Introduction : textes explicites tu/vous, incluant « moins de 2 minutes ».
+- Questionnaire : une question par écran, chargée exclusivement depuis `questions.js`.
+  Ce fichier conserve les textes et points existants et ajoute `textVous` pour chaque
+  question ; les réponses à la première personne ou neutres sont communes aux deux
+  modes. Pas de remplacement automatique de pronoms, pas de lettres visibles, pas de
+  barème dans l'interface. Une barre discrète expose aussi la progression accessible.
+- Chaque réponse remplace seulement sa case dans `assessmentAnswers` (toujours neuf
+  cases), puis la question suivante devient l'étape persistée. Retour conserve les
+  réponses et leur sélection visible. Les démonstrations physiques ne sont pas créées.
+- Après Q9, `evaluateLevel.js` calcule le niveau : barème et matrice du lot 3 inchangés,
+  notamment 0–11 -> Reprise. Une seule sauvegarde contient les neuf réponses,
+  `proposedLevel`, `assessmentDate` ISO et `assessmentVersion: "1"`, avec l'étape 17.
+- Une réponse modifiée invalide la proposition précédente, sa date/version et toute
+  ancienne acceptation. Après Q9, elle est recalculée. Une proposition incohérente ou
+  incomplète n'est ni affichée comme valide ni acceptée silencieusement.
+- Proposition : brève apparition en fondu, désactivée si réduction des animations.
+  L'acceptation enregistre `selectedLevel = proposedLevel`, `levelOrigin = "coach"`.
+  Le choix manuel enregistre `levelOrigin = "manual"`, même si identique au proposé.
+  Aucun niveau n'est choisi avant validation explicite. Les deux chemins atteignent
+  seulement le conteneur Expérience, toujours avec `onboardingCompleted: false`.
+- `safetyConfirmed` est une confirmation de parcours, pas une évaluation médicale.
+  Le contexte et la persistance du profil restent inchangés. La forme du jour, les
+  pauses et l'historique ne sont jamais écrits par ces nouveaux écrans.
 
 ## Erreurs et reprise
 
@@ -124,7 +166,7 @@ de localStorage n'empêche pas d'atteindre l'état d'erreur du profil.
 
 ## Contrôles
 
-`node --test tests/*.test.js` couvre les lots 1, 3, 4A et 4B. Les tests vérifient
+`node --test tests/*.test.js` couvre les lots 1, 3, 4A, 4B et 4C. Les tests vérifient
 les états, les 21 indices de reprise, les pages protégées et accessibles, le
 sous-chemin Vite, le rendu des erreurs, le splash neutre et les mises à jour du
 contexte (dont échec de sauvegarde). La reprise est aussi testée pour une étape 0,
@@ -157,7 +199,7 @@ artificiellement terminé. Aucun mécanisme de test n'est intégré à l'applica
 4. Tester Retour et une modification ; les autres réponses doivent rester présentes.
 5. À l'âge, saisir 17 : blocage sans Continuer. Après rechargement, saisie de l'âge
    à nouveau ; en inspectant le profil, `age` doit être `null`, jamais 17.
-6. Saisir 18 : arrêt au conteneur Sécurité, onboarding toujours incomplet.
+6. Saisir 18 : âge enregistré et accès à Sécurité, onboarding toujours incomplet.
 7. Recharger puis fermer le splash : reprise à l'étape enregistrée, mode d'adresse
    et réponses conservés. L'origine de reprise suit toujours les règles du lot 4A.
 8. Recommencer dans une autre fenêtre privée (après fermeture des précédentes) pour
@@ -168,6 +210,40 @@ profil fictif sur 5174, jamais celui de l'adresse habituelle. Elles couvrent le
 parcours jusqu'à l'écran Âge et la reprise. Les branches d'âge sont aussi testées
 automatiquement sans sauvegarder d'âge mineur.
 
-Avant la suite : valider visuellement ces premiers écrans, puis définir la sécurité,
-le saut conditionnel et les conditions exactes de fin. Le lot 4B ne prend aucune
-nouvelle décision sur le niveau, le matériel ou la personnalisation des séances.
+### Test visuel local du lot 4C
+
+Même adresse interactive sur le port 5174. Utiliser une fenêtre privée pour un
+nouveau parcours, ou reprendre le profil incomplet des tests précédents. Aucun profil
+artificiellement terminé, aucune suppression de données nécessaire.
+
+1. Après les étapes du lot 4B et un âge adulte, vérifier Sécurité : Continuer doit
+   être désactivé sans la case, puis permettre le passage après confirmation.
+2. Choisir Haltères et Élastiques, recharger, fermer le splash : les choix restent
+   cochés à l'étape Matériel. Choisir « Non, pas de matériel » les décoche tous ;
+   choisir Barre longue désactive « aucun ». Continuer.
+3. Vérifier l'introduction « moins de 2 minutes », puis une seule question par écran,
+   sans A/B/C visibles. Le Coach reste présent et la progression est discrète.
+4. Répondre à trois questions, recharger puis fermer le splash : le parcours reprend
+   à la prochaine question. Retour retrouve la réponse précédente, modifiable.
+5. Pour des exemples reproductibles : les neuf premières réponses donnent Tonique ;
+   les neuf deuxièmes donnent Forme ; les neuf troisièmes donnent Reprise.
+6. Après Q9, recharger sur la proposition : le niveau proposé reste visible sans
+   être accepté automatiquement. Retour vers Q9 permet de modifier la réponse :
+   après neuf premières réponses, choisir la troisième à Q9 fait passer Tonique à Forme.
+7. « Ça me convient » atteint le conteneur Expérience. Retour permet de revoir la
+   proposition, puis « Je préfère choisir mon niveau » propose les trois niveaux.
+   Après choix et validation, même arrêt au conteneur Expérience. Un choix manuel
+   identique au proposé garde l'origine manual.
+8. Dans le profil, vérifier les neuf valeurs a/b/c, la date, la version, les niveaux
+   proposé/sélectionné et l'origine. La complétion doit toujours être fausse.
+9. Refaire le parcours dans l'autre mode d'adresse ; les textes doivent suivre ce
+   choix, y compris les neuf questions et la proposition.
+
+Les nouveaux tests automatisés exécutent les vrais composants et la persistance sur
+un stockage fictif isolé, y compris les échecs d'écriture. Les contrôles visuels des
+nouveaux écrans ont aussi utilisé une prévisualisation statique temporaire sur 5175,
+avec données fictives uniquement en mémoire et aucun accès à localStorage. Ce serveur
+et son onglet ont été arrêtés ; aucun outil de contournement n'est intégré au projet.
+
+Avant la suite : valider visuellement ce lot, puis définir l'expérience antérieure,
+la raison d'abandon et les conditions de fin. Les séances restent celles existantes.
