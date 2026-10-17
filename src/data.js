@@ -33,6 +33,7 @@ export const coachSayings = [
 
 export const workoutSteps = [
   {
+    id: "mobilite-epaules",
     name: "Mobilité des épaules",
     seconds: 60,
 
@@ -46,6 +47,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "marche-active",
     name: "Marche active sur place",
     seconds: 75,
 
@@ -59,6 +61,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "assis-debout-chaise",
     name: "Assis-debout avec chaise",
     seconds: 75,
 
@@ -72,6 +75,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "pompes-mur",
     name: "Pompes contre un mur",
     seconds: 75,
 
@@ -85,6 +89,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "pas-lateraux",
     name: "Pas latéraux",
     seconds: 75,
 
@@ -98,6 +103,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "equilibre",
     name: "Équilibre contrôlé",
     seconds: 75,
 
@@ -111,6 +117,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "extension-jambes-assis",
     name: "Extension des jambes assis",
     seconds: 75,
 
@@ -124,6 +131,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "montees-pointe-pieds",
     name: "Montées sur la pointe des pieds",
     seconds: 75,
 
@@ -137,6 +145,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "rotations-buste",
     name: "Rotations douces du buste",
     seconds: 75,
 
@@ -150,6 +159,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "ouverture-poitrine",
     name: "Ouverture de la poitrine",
     seconds: 75,
 
@@ -163,6 +173,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "etirement-mollets",
     name: "Étirement doux des mollets",
     seconds: 75,
 
@@ -176,6 +187,7 @@ export const workoutSteps = [
   },
 
   {
+    id: "respiration-grandissement",
     name: "Respiration et grandissement",
     seconds: 105,
 
