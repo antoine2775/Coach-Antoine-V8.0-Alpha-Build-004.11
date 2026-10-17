@@ -1,6 +1,9 @@
 import React from "react";
 import { useUserProfile } from "../context/UserProfileContext";
 import { ONBOARDING_STEPS } from "../onboarding/steps";
+import CoachAvatar from "../components/CoachAvatar";
+import EarlySteps, { EARLY_STEP_IDS } from "../components/onboarding/EarlySteps";
+import { prepareEarlyStep } from "../onboarding/earlySteps";
 
 const errors = {
   invalid: "Le profil enregistré est invalide ou illisible. Il n’a pas été remplacé.",
@@ -9,22 +12,25 @@ const errors = {
   "invalid-step": "L’étape enregistrée n’est pas reconnue. Le profil et les réponses ont été conservés.",
 };
 
-// Point d'insertion des futurs écrans : aucun formulaire ni saut d'étape en 4A.
-function PendingStep({ step }) {
-  return <section className="card" aria-labelledby="onboarding-step-title">
+// Les étapes au-delà de l'âge restent des conteneurs, sans validation ni avancée.
+function PendingStep({ step, updateUserProfile }) {
+  return <>
     <p className="eyebrow">Étape {step.index + 1} sur {ONBOARDING_STEPS.length}</p>
     <h2 id="onboarding-step-title">{step.title}</h2>
     <p>Le parcours initial est en cours de préparation.</p>
-  </section>;
+    {step.id === "safety" && <button type="button" className="secondary-button" onClick={() => {
+      updateUserProfile(prepareEarlyStep("back", step.index).changes);
+    }}>Retour</button>}
+  </>;
 }
 
 export default function Onboarding() {
-  const { onboarding, saveError, reloadProfile } = useUserProfile();
+  const { onboarding, saveError, reloadProfile, updateUserProfile } = useUserProfile();
   const error = errors[onboarding.status];
   return <main className="page" data-onboarding-status={onboarding.status}>
     <header className="page-header">
       <p className="eyebrow">COACH ANTOINE</p>
-      <h1>Configuration initiale</h1>
+      <h1>Faisons connaissance.</h1>
     </header>
     {onboarding.status === "loading" && <p role="status">Chargement du profil…</p>}
     {error && <section className="card">
@@ -33,7 +39,14 @@ export default function Onboarding() {
     </section>}
     {(onboarding.status === "absent" || onboarding.status === "incomplete") &&
       <div data-onboarding-resuming={onboarding.isResuming}>
-        <PendingStep step={onboarding.step} />
+        <section className="card onboarding-stage" key={onboarding.step.id}>
+          <div className="onboarding-avatar"><CoachAvatar size={160} /></div>
+          <div className="onboarding-content">
+            {EARLY_STEP_IDS.includes(onboarding.step.id)
+              ? <EarlySteps step={onboarding.step} />
+              : <PendingStep step={onboarding.step} updateUserProfile={updateUserProfile} />}
+          </div>
+        </section>
       </div>}
     {saveError && <p role="alert">La mise à jour du profil n’a pas pu être enregistrée.</p>}
   </main>;

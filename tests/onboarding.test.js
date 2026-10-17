@@ -108,14 +108,14 @@ function renderRoutes(state, route = "/", basename = "/") {
   vm.runInNewContext(uiCode, { module, require, localStorage: { getItem: () => null } });
   const { AppRoutes, UserProfileContext } = module.exports;
   return renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [route], basename },
-    React.createElement(UserProfileContext.Provider, { value: { onboarding: state, reloadProfile() {} } },
+    React.createElement(UserProfileContext.Provider, { value: { onboarding: state, profile: state.profile, reloadProfile() {} } },
       React.createElement(AppRoutes, { soundEnabled: false, setSoundEnabled() {} }))));
 }
 
 for (const route of ["/", "/seances", "/progression", "/carnet", "/coach", "/garage", "/presence", "/onboarding"]) {
   test(`route ${route} bloquée sans onboarding terminé`, () => {
     const html = renderRoutes(stateFrom(storageWith()), route);
-    assert.match(html, /Configuration initiale/);
+    assert.match(html, /Faisons connaissance/);
     assert.match(html, /data-onboarding-status="absent"/);
     assert.doesNotMatch(html, /bottom-nav|Commencer la séance|Comment tu te sens/);
   });
@@ -143,13 +143,13 @@ for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comme
     const html = renderRoutes(stateFrom(storageWith(completedProfile())), route);
     assert.ok(html.includes(expected));
     assert.match(html, /bottom-nav/);
-    assert.doesNotMatch(html, /Configuration initiale/);
+    assert.doesNotMatch(html, /Faisons connaissance/);
   });
 }
 
 test("garde compatible avec le sous-chemin Vite", () => {
   const base = "/Coach-Antoine-V8.0-Alpha-Build-004.11";
-  assert.match(renderRoutes(stateFrom(storageWith()), `${base}/seances`, base), /Configuration initiale/);
+  assert.match(renderRoutes(stateFrom(storageWith()), `${base}/seances`, base), /Faisons connaissance/);
   assert.match(renderRoutes(stateFrom(storageWith(completedProfile())), `${base}/seances`, base), /Comment tu te sens/);
 });
 
