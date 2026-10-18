@@ -59,7 +59,7 @@ for (const profile of [null, undefined, {}, { firstName: null }, { firstName: 12
   test(`prénom absent ou invalide ${JSON.stringify(profile)} : repli sans ponctuation parasite`, () => {
     const texts = getPersonalizedTexts(profile);
     assert.equal(texts.welcome, "Bonjour !");
-    assert.equal(texts.finish("normal"), "Belle séance aujourd’hui ! À bientôt pour la prochaine.");
+    assert.equal(texts.finish("normal"), "Belle séance aujourd’hui !");
     assert.equal(texts.finish("high"), "Une séance un peu plus soutenue aujourd’hui. Bravo !");
     assert.ok(texts.finish("low").endsWith("Bravo !"));
     assert.equal(texts.finish(null), "Bravo !");
@@ -80,7 +80,7 @@ test("messages finaux exacts pour les trois formes et les deux modes", () => {
     assert.equal(texts.finish("low"), mode === "vous"
       ? "Aujourd’hui, on a fait plus léger. Mais l’important, c’est que vous avez quand même fait votre séance. Bravo Éloïse !"
       : "Aujourd’hui, on a fait plus léger. Mais l’important, c’est que tu as quand même fait ta séance. Bravo Éloïse !");
-    assert.equal(texts.finish("normal"), "Belle séance aujourd’hui, Éloïse ! À bientôt pour la prochaine.");
+    assert.equal(texts.finish("normal"), "Belle séance aujourd’hui, Éloïse !");
     assert.equal(texts.finish("high"), "Une séance un peu plus soutenue aujourd’hui. Bravo Éloïse !");
   }
 });
@@ -108,8 +108,8 @@ test("douze consignes explicites en vous et données temporelles conservées", (
 
 // Le vrai Workout est exécuté avec des hooks isolés ; aucune horloge ni donnée du navigateur.
 function workoutUI(profile) {
-  let cells = [], index = 0, tree, riffs = 0;
-  const data = new Map([["coachAntoineSound", "off"]]);
+  let cells = [], index = 0, tree, riffs = 0, clock = 0;
+  const data = new Map([["coachAntoineSound", "off"], ["coachAntoineWorkoutFeedbackV1", JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: null, pendingReason: null, sessions: [] })]]);
   const react = { ...React,
     useContext: () => ({ profile }),
     useState(initial) { const i = index++; if (!(i in cells)) cells[i] = typeof initial === "function" ? initial() : initial;
@@ -120,8 +120,9 @@ function workoutUI(profile) {
   const module = { exports: {} };
   vm.runInNewContext(uiCode, { module,
     require: (name) => name === "react" ? react : require(name),
-    localStorage: { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) },
-    crypto: { randomUUID: () => "test-session-6a" }, performance: { now: () => 0 },
+    localStorage: { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) },
+    Date: class extends Date { constructor(...args) { super(...(args.length ? args : [Date.parse("2026-10-18T10:00:00Z") + clock])); } static now() { return Date.parse("2026-10-18T10:00:00Z") + clock; } },
+    crypto: { randomUUID: () => "test-session-6a" }, performance: { now: () => clock },
     window: { AudioContext: class { constructor() { riffs++; throw Error("unexpected audio"); } } },
   });
   function expand(node) {
@@ -136,10 +137,16 @@ function workoutUI(profile) {
   function render() { index = 0; tree = expand(module.exports.Workout()); }
   function click(label) {
     const node = nodes(tree).find((item) => item.type === "button" && text(item) === label);
-    assert.ok(node, `bouton ${label}`); node.props.onClick(); render();
+    assert.ok(node, `bouton ${label}`); clock += 400; node.props.onClick(); render();
   }
   render();
-  return { click, text: () => text(tree), data, riffs: () => riffs };
+  function change(label) {
+    const node = nodes(tree).find((item) => item.type === "label" && text(item) === label);
+    assert.ok(node, label);
+    nodes(node).find((item) => item.type === "input").props.onChange(); render();
+  }
+  function advance(ms) { clock += ms; cells.find((cell) => typeof cell?.tick === "function").tick(); render(); }
+  return { click, change, advance, text: () => text(tree), data, riffs: () => riffs };
 }
 
 for (const mode of ["tu", "vous"]) {
@@ -158,19 +165,21 @@ for (const mode of ["tu", "vous"]) {
         ui.click("Suivant");
       }
     }
-    assert.ok(ui.text().includes(texts.finish("normal")));
-    assert.ok(ui.text().includes(texts.restQuestion));
+    assert.doesNotMatch(ui.text(), /Belle séance aujourd’hui/);
+    assert.ok(ui.text().includes(texts.adaptationQuestion));
     assert.doesNotMatch(ui.text(), /fier|fière|Bravo Antoine|undefined|\bnull\b/);
     const history = JSON.parse(ui.data.get("coachAntoineHistory"));
     assert.equal(history.length, 1);
     assert.equal(history[0].activeSeconds, 0);
     assert.equal(history[0].id, "test-session-6a");
     assert.equal(ui.riffs(), 0);
-    ui.click("Trop courtes");
+    ui.click("NON");
+    ui.change("Récupération"); ui.click("CONTINUER");
+    ui.change("Trop courte"); ui.click("VALIDER");
     assert.equal(ui.data.get("coachAntoineRestDuration"), "20");
     assert.ok(ui.text().includes(texts.restFeedback("short", 20)));
-    assert.ok(ui.text().includes("À BIENTÔT"));
-    assert.doesNotMatch(ui.text(), /Séance terminée !|Les pauses.*convenu|On n.a pas rajeuni/);
+    ui.advance(7000); assert.ok(ui.text().includes("À BIENTÔT"));
+    assert.doesNotMatch(ui.text(), /Les pauses.*convenu|On n.a pas rajeuni/);
     assert.equal(JSON.parse(ui.data.get("coachAntoineHistory")).length, 1);
   });
   for (const [label, day] of [["Petite forme", "low"], ["En forme", "normal"], ["Pleine forme", "high"]]) {
@@ -180,6 +189,7 @@ for (const mode of ["tu", "vous"]) {
         const ui = workoutUI(profile);
         ui.click(label);
         for (let index = 0; index < 23; index++) ui.click("Suivant");
+        ui.click("OUI");
         assert.ok(ui.text().includes(getPersonalizedTexts(profile).finish(day)));
         assert.doesNotMatch(ui.text(), /undefined|\bnull\b|Bravo Antoine|fier|fière/);
       }
@@ -210,18 +220,20 @@ test("changement de mode enregistré : nouvelles pages immédiatement cohérente
   }
 });
 
-for (const [label, seconds, choice] of [["Parfaites", 15, "perfect"], ["Trop longues", 10, "long"]]) {
+for (const [label, seconds, choice] of [["OUI", 15, "yes"], ["Trop longue", 10, "long"]]) {
   test(`écran final distinct après ${label} : durée issue du réglage existant`, () => {
     const profile = profileFor("tu", "female", "marie");
     const ui = workoutUI(profile);
     ui.click("En forme");
     for (let i = 0; i < 23; i++) ui.click("Suivant");
-    ui.click(label);
-    assert.ok(ui.text().includes(getPersonalizedTexts(profile).restFeedback(choice, seconds)));
-    assert.equal(ui.data.get("coachAntoineRestDuration"), String(seconds));
+    if (choice === "long") { ui.click("NON"); ui.change("Récupération"); ui.click("CONTINUER"); }
+    if (choice === "long") { ui.change(label); ui.click("VALIDER"); } else ui.click(label);
+    assert.ok(ui.text().includes(choice === "yes" ? getPersonalizedTexts(profile).finish("normal") : getPersonalizedTexts(profile).restFeedback(choice, seconds)));
+    assert.equal(ui.data.get("coachAntoineRestDuration") ?? "15", String(seconds));
     assert.equal(JSON.parse(ui.data.get("coachAntoineHistory")).length, 1);
+    if (choice === "long") ui.advance(7000);
     assert.ok(ui.text().includes("À BIENTÔT"));
-    assert.doesNotMatch(ui.text(), /Séance terminée !/);
+    assert.doesNotMatch(ui.text(), /Tes exercices et tes temps de récupération/);
   });
 }
 
