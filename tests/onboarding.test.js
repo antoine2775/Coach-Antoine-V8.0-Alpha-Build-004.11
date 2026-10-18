@@ -119,7 +119,7 @@ for (const route of ["/", "/seances", "/progression", "/carnet", "/coach", "/gar
     const html = renderRoutes(stateFrom(storageWith()), route);
     assert.match(html, /Faisons connaissance/);
     assert.match(html, /data-onboarding-status="absent"/);
-    assert.doesNotMatch(html, /bottom-nav|Commencer la séance|Comment tu te sens/);
+    assert.doesNotMatch(html, /bottom-nav|Commencer la séance|Comment vous sentez-vous/);
   });
 }
 
@@ -141,7 +141,7 @@ for (const status of ["loading", "invalid", "unsupported-version", "unavailable"
   });
 }
 
-for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comment tu te sens"],
+for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comment vous sentez-vous"],
   ["/progression", "Historique récent"], ["/carnet", "LE CARNET DU COACH"], ["/coach", "Réglages"]]) {
   test(`profil terminé : route ${route} préservée`, () => {
     const html = renderRoutes(stateFrom(storageWith(completedProfile())), route);
@@ -154,10 +154,10 @@ for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comme
 test("garde compatible avec le sous-chemin Vite", () => {
   const base = "/Coach-Antoine-V8.0-Alpha-Build-004.11";
   assert.match(renderRoutes(stateFrom(storageWith()), `${base}/seances`, base), /Faisons connaissance/);
-  assert.match(renderRoutes(stateFrom(storageWith(completedProfile())), `${base}/seances`, base), /Comment tu te sens/);
+  assert.match(renderRoutes(stateFrom(storageWith(completedProfile())), `${base}/seances`, base), /Comment vous sentez-vous/);
 });
 
-for (const [choice, expected] of [["later", "Programme du jour"], ["now", "Comment tu te sens"]]) {
+for (const [choice, expected] of [["later", "Programme du jour"], ["now", "Comment vous sentez-vous"]]) {
   test(`sortie ${choice} : profil réellement finalisé, destination accessible après relecture`, () => {
     const profile = { ...completedProfile(), proposedLevel: "forme", selectedLevel: "forme",
       safetyConfirmed: true, onboardingCurrentStep: 20, onboardingCompleted: false };

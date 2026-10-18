@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Pause,
-  Play,
-  RotateCcw,
-  SkipForward,
-} from "lucide-react";
+import { Link } from "react-router-dom";
 
 import CoachAvatar from "../components/CoachAvatar";
 import { workoutSteps } from "../data";
 import { playRiff } from "../utils/sound";
 import { HISTORY_KEY, readHistory } from "../utils/workoutHistory";
+import { useUserProfile } from "../context/UserProfileContext";
+import { getPersonalizedTexts } from "../utils/personalizedTexts";
 
 const DEFAULT_REST = 15;
 const MIN_REST = 10;
@@ -39,6 +36,8 @@ function loadRestDuration() {
 }
 
 export default function Workout() {
+  const { profile } = useUserProfile();
+  const texts = getPersonalizedTexts(profile);
   const [dayForm, setDayForm] = useState(null);
 
   const [step, setStep] = useState(0);
@@ -66,6 +65,8 @@ export default function Workout() {
 
   const [restFeedbackDone, setRestFeedbackDone] =
     useState(false);
+
+  const controlsStarted = useRef(false);
 
   const cur = workoutSteps[step];
 
@@ -306,7 +307,7 @@ export default function Workout() {
       String(newDuration)
     );
 
-    setRestFeedbackDone(true);
+    setRestFeedbackDone(choice);
   }
 
   // FORME DU JOUR
@@ -320,7 +321,7 @@ export default function Workout() {
           </p>
 
           <h1>
-            Comment tu te sens aujourd'hui ?
+            {texts.dayFormQuestion}
           </h1>
         </header>
 
@@ -328,18 +329,17 @@ export default function Workout() {
           <CoachAvatar size={180} />
 
           <p>
-            Dis-moi simplement comment tu te sens.
-            J'en tiendrai compte pour ta séance.
+            {texts.dayFormExplanation}
           </p>
 
-          <div className="workout-actions">
+          <div className="workout-actions workout-choices day-form-choices">
             <button
               className="secondary-button"
               onClick={() =>
-                chooseDayForm("low")
+                chooseDayForm("high")
               }
             >
-              Petite forme
+              Pleine forme
             </button>
 
             <button
@@ -354,16 +354,15 @@ export default function Workout() {
             <button
               className="secondary-button"
               onClick={() =>
-                chooseDayForm("high")
+                chooseDayForm("low")
               }
             >
-              Pleine forme
+              Petite forme
             </button>
           </div>
 
           <p className="safety-note">
-            Aujourd'hui ne définit pas ton niveau
-            général. C'est simplement ta forme du jour.
+            {texts.dayFormNote}
           </p>
         </section>
       </>
@@ -372,18 +371,29 @@ export default function Workout() {
 
   // FIN DE SÉANCE
 
+  if (finished && restFeedbackDone) {
+    return (
+      <section className="finish-card farewell-card" aria-labelledby="farewell-title">
+        <CoachAvatar size={180} />
+        <h1 id="farewell-title">{texts.restFeedback(restFeedbackDone, restDuration)}</h1>
+        <p className="farewell-goodbye">{texts.goodbye()}</p>
+        {saveStatus === "error" && <>
+          <p role="alert">La séance est terminée, mais son enregistrement a échoué.</p>
+          <button className="secondary-button" onClick={saveWorkout}>Réessayer l'enregistrement</button>
+        </>}
+        <Link className="primary-button" to="/">À BIENTÔT</Link>
+      </section>
+    );
+  }
+
   if (finished) {
     return (
       <section className="finish-card">
         <CoachAvatar size={230} />
 
-        <p className="eyebrow">
-          SÉANCE TERMINÉE
-        </p>
+        <h1>Séance terminée !</h1>
 
-        <h1>Bravo Antoine !</h1>
-
-        <p>Tu peux être fier de toi.</p>
+        <p>{texts.finish(dayForm)}</p>
 
         <p role="status">
           {saveStatus === "pending" && "Enregistrement de la séance…"}
@@ -396,15 +406,10 @@ export default function Workout() {
           </button>
         )}
 
-        <blockquote>
-          « On n'a pas rajeuni aujourd'hui…
-          mais on est en meilleure forme qu'hier ! »
-        </blockquote>
-
-        {!restFeedbackDone ? (
+        {(
           <>
             <h2>
-              Les pauses t'ont-elles convenu ?
+              {texts.restQuestion}
             </h2>
 
             <p>
@@ -412,7 +417,7 @@ export default function Workout() {
               aujourd'hui.
             </p>
 
-            <div className="workout-actions">
+            <div className="workout-actions workout-choices">
               <button
                 className="secondary-button"
                 onClick={() =>
@@ -441,24 +446,9 @@ export default function Workout() {
               </button>
             </div>
           </>
-        ) : (
-          <p>
-            C'est enregistré. Les prochaines
-            pauses dureront{" "}
-            <strong>
-              {restDuration} secondes
-            </strong>
-            .
-          </p>
         )}
 
-        <button
-          className="primary-button"
-          onClick={reset}
-        >
-          <RotateCcw size={20} />
-          Nouvelle séance
-        </button>
+        <Link className="finish-home" to="/">Accueil</Link>
       </section>
     );
   }
@@ -473,7 +463,7 @@ export default function Workout() {
         </p>
 
         <h1>
-          On y va à ton rythme.
+          {texts.pace}
         </h1>
       </header>
 
@@ -484,6 +474,7 @@ export default function Workout() {
           <button
             className="secondary-button"
             onClick={() => {
+              controlsStarted.current = true;
               if (running) {
                 measureExercise();
                 exerciseClock.current.startedAt = null;
@@ -491,22 +482,13 @@ export default function Workout() {
               setRunning((value) => !value);
             }}
           >
-            {running ? (
-              <Pause />
-            ) : (
-              <Play />
-            )}
-
-            {running
-              ? "Pause"
-              : "Démarrer"}
+            {running ? "Pause" : controlsStarted.current ? "Reprendre" : "Démarrer"}
           </button>
 
           <button
             className="secondary-button"
             onClick={next}
           >
-            <SkipForward />
             Suivant
           </button>
         </div>
@@ -514,13 +496,14 @@ export default function Workout() {
         {isResting ? (
           <>
             <span className="pill">
-              PAUSE
+              RÉCUPÉRATION
             </span>
 
             <h2>
-              Respire tranquillement.
+              {texts.restMessage(step)}
             </h2>
 
+            <p className="timer-label">Temps restant de la pause</p>
             <div className="timer">
               {fmt(restRemaining)}
             </div>
@@ -534,13 +517,9 @@ export default function Workout() {
           </>
         ) : (
           <>
-            <span className="pill">
-              Étape {step + 1}/
-              {workoutSteps.length}
-            </span>
-
             <h2>{cur.name}</h2>
 
+            <p className="timer-label">Temps restant de l’exercice</p>
             <div className="timer">
               {fmt(remaining)}
             </div>
@@ -551,11 +530,12 @@ export default function Workout() {
               </strong>
             </p>
 
-            <p>{cur.note}</p>
+            <p>{profile?.addressMode === "vous" ? cur.noteVous : cur.note}</p>
           </>
         )}
 
-        <div className="progress-track">
+        <p id="workout-progress-label" className="muted">Progression globale de la séance</p>
+        <div className="progress-track" role="progressbar" aria-labelledby="workout-progress-label" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0, Math.min(100, progress))}>
           <div
             style={{
               width: `${Math.max(
@@ -565,13 +545,12 @@ export default function Workout() {
             }}
           />
         </div>
+        <p className="muted">Exercice {step + 1} / {workoutSteps.length}</p>
 
       </section>
 
       <p className="safety-note">
-        Reste dans une amplitude confortable.
-        Arrête l'exercice en cas de douleur ou de
-        malaise.
+        {texts.safety}
       </p>
     </>
   );

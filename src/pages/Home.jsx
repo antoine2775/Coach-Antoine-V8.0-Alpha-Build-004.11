@@ -9,6 +9,8 @@ import {
 
 import CoachPresence from "../components/CoachPresence";
 import { getStatistics, readHistory } from "../utils/workoutHistory";
+import { useUserProfile } from "../context/UserProfileContext";
+import { getPersonalizedTexts } from "../utils/personalizedTexts";
 
 const programBlocks = [
   { label: "Mise en mouvement", icon: "🧍", description: "Préparer progressivement le corps." },
@@ -18,6 +20,8 @@ const programBlocks = [
 ];
 
 export default function Home() {
+  const { profile } = useUserProfile();
+  const texts = getPersonalizedTexts(profile);
   const nav = useNavigate();
   const statistics = getStatistics(readHistory());
   const statIcons = [CalendarDays, Timer, Clock];
@@ -27,8 +31,8 @@ export default function Home() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">COACH ANTOINE</p>
-          <h1>Bonjour Antoine !</h1>
-          <p className="hero-card__ready">Prêt ?</p>
+          <h1>{texts.welcome}</h1>
+          <p className="hero-card__ready">{texts.ready}</p>
           <p className="hero-card__quote">
             « Le plus difficile, c'est de commencer. »
           </p>
@@ -53,7 +57,7 @@ export default function Home() {
           </div>
 
         </div>
-        <p className="muted" style={{ color: "#243B53", fontSize: "16px" }}>Coach Antoine va te préparer la bonne séance pour aujourd’hui.</p>
+        <p className="muted" style={{ color: "#243B53", fontSize: "16px" }}>{texts.program}</p>
 
         <div className="program-list">
           {programBlocks.map((x) => (
@@ -76,11 +80,6 @@ export default function Home() {
           </article>;
         })}
       </section>
-      <p className="muted">{statistics.note}</p>
-
-      <p className="version-label">
-        V8.0 Alpha — Build 004.10.2
-      </p>
     </>
   );
 }

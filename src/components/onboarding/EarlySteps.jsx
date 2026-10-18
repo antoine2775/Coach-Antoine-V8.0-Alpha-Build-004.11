@@ -11,10 +11,10 @@ function Back({ onClick }) {
   return <button type="button" className="secondary-button" onClick={onClick}>Retour</button>;
 }
 
-function Introduction({ messages, submit, profile }) {
+function Introduction({ submit, profile }) {
   return <>
     <h2>Bonjour, moi c’est Coach Antoine.</h2>
-    <Paragraphs texts={messages.introduction} />
+    <Paragraphs texts={EARLY_MESSAGES.tu.introduction} />
     <div className="onboarding-actions">
       <button type="button" className="primary-button" aria-pressed={profile?.addressMode === "tu"} onClick={() => submit("addressMode", "tu")}>Oui, on se tutoie</button>
       <button type="button" className="secondary-button" aria-pressed={profile?.addressMode === "vous"} onClick={() => submit("addressMode", "vous")}>Je préfère qu’on se vouvoie</button>

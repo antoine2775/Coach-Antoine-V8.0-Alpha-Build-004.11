@@ -1,8 +1,12 @@
 import React, { useState } from "react";
 import { CalendarCheck, Clock, Timer } from "lucide-react";
 import { getStatistics, readHistory } from "../utils/workoutHistory";
+import { useUserProfile } from "../context/UserProfileContext";
+import { getPersonalizedTexts } from "../utils/personalizedTexts";
 
 export default function Progress() {
+  const { profile } = useUserProfile();
+  const texts = getPersonalizedTexts(profile);
   const [weight, setWeight] = useState(() => {
     try { return localStorage.getItem("coachAntoineWeight") || ""; }
     catch { return ""; }
@@ -22,7 +26,7 @@ export default function Progress() {
     } catch { setWeightError(true); }
   }
   return <>
-    <header className="page-header"><p className="eyebrow">TON PARCOURS</p><h1>Progression</h1><p>Chaque séance compte.</p></header>
+    <header className="page-header"><p className="eyebrow">{texts.journey}</p><h1>Progression</h1><p>Chaque séance compte.</p></header>
     <section className="stats-grid">
       {statistics.cards.map(({ label, value }, index) => {
         const Icon = icons[index];
@@ -37,7 +41,7 @@ export default function Progress() {
     </section>
     <section className="card"><h2>Historique récent</h2>
       {result.error && <p role="status">L’historique ne peut pas être affiché intégralement. Les données ont été conservées.</p>}
-      {!result.error && recent.length === 0 && <p className="muted">Ta prochaine séance apparaîtra ici.</p>}
+      {!result.error && recent.length === 0 && <p className="muted">{texts.emptyHistory}</p>}
       {recent.map((entry, index) => <div className="history-row" key={entry.id || index}><strong>{entry.label}</strong><span>{new Date(entry.date).toLocaleDateString("fr-FR")}</span></div>)}
     </section>
   </>;

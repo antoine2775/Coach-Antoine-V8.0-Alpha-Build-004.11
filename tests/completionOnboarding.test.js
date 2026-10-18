@@ -4,6 +4,7 @@ import vm from "node:vm";
 import { buildSync } from "esbuild";
 import * as completion from "../src/onboarding/completionSteps.js";
 import { COMPLETION_MESSAGES } from "../src/onboarding/completionMessages.js";
+import { getStopReasonLabel } from "../src/utils/personalizedTexts.js";
 import { evaluateLevel } from "../src/onboarding/evaluateLevel.js";
 import { getOnboardingState } from "../src/onboarding/onboardingState.js";
 import { ONBOARDING_STEPS } from "../src/onboarding/steps.js";
@@ -169,7 +170,8 @@ for (const mode of ["tu", "vous"]) {
   for (const option of completion.STOP_REASON_OPTIONS) {
     test(`réaction ${mode} pour ${option.value} : sauvegarde puis message avant conclusion`, () => {
       const ui = setup(draft(19, mode));
-      ui.click(option.label);
+      const label = getStopReasonLabel(option, draft(19, mode));
+      ui.click(label);
       const expected = option.value === "preferNotToSay"
         ? "Bien sûr, aucun problème." : "Merci de me l’avoir dit. Je vais essayer d’en tenir compte.";
       assert.ok(ui.text().includes(expected));
@@ -180,10 +182,10 @@ for (const mode of ["tu", "vous"]) {
       assert.deepEqual(ui.labels(), ["Continuer", "Retour"]);
       const resumed = setup(ui.profile());
       assert.equal(resumed.profile().previousProgramStopReason, option.value);
-      assert.ok(resumed.labels().includes(option.label));
+      assert.ok(resumed.labels().includes(label));
       ui.click("Retour");
-      assert.ok(ui.labels().includes(option.label));
-      ui.click(option.label);
+      assert.ok(ui.labels().includes(label));
+      ui.click(label);
       ui.click("Continuer");
       assert.equal(ui.profile().onboardingCurrentStep, 20);
       assert.ok(ui.text().includes(`Je ${mode === "vous" ? "vous" : "te"} connais déjà un peu mieux, Camille.`));
@@ -195,7 +197,7 @@ for (const mode of ["tu", "vous"]) {
     assert.deepEqual(ui.labels(), [...completion.EXPERIENCE_OPTIONS.map((option) => option.label), "Retour"]);
     ui.click("Oui, mais j’ai arrêté");
     COMPLETION_MESSAGES[mode].reason.forEach((text) => assert.ok(ui.text().includes(text)));
-    assert.deepEqual(ui.labels(), [...completion.STOP_REASON_OPTIONS.map((option) => option.label), "Passer cette question", "Retour"]);
+    assert.deepEqual(ui.labels(), [...completion.STOP_REASON_OPTIONS.map((option) => getStopReasonLabel(option, draft(19, mode))), "Passer cette question", "Retour"]);
     ui.click("Autre raison");
     ui.click("Continuer");
     COMPLETION_MESSAGES[mode].conclusion("Camille").forEach((text) => assert.ok(ui.text().includes(text)));
@@ -265,6 +267,20 @@ test("conclusion invalide : pas de promesse ni de bouton de finalisation", () =>
   assert.doesNotMatch(ui.text(), /Je (?:te|vous) connais déjà un peu mieux, Camille/);
   assert.equal(ui.saves(), 0);
 });
+
+for (const mode of ["tu", "vous"]) for (const sex of ["male", "female"]) {
+  test(`onboarding ${mode}/${sex} : accord utilisateur et demande de retour`, () => {
+    const ui = setup({ ...draft(19, mode), sex });
+    const label = sex === "female" ? "Je ne me sentais pas assez accompagnée" : "Je ne me sentais pas assez accompagné";
+    assert.ok(ui.labels().includes(label));
+    ui.click(label);
+    assert.equal(ui.profile().previousProgramStopReason, "notSupportedEnough");
+    const incomplete = setup({ ...draft(20, mode), sex, age: 17 });
+    assert.ok(incomplete.text().includes(mode === "vous"
+      ? "Revenez aux étapes précédentes pour le compléter."
+      : "Reviens aux étapes précédentes pour le compléter."));
+  });
+}
 
 test("aucune nouvelle clé, historique et réglages préservés lors de la finalisation", () => {
   const ui = setup(draft(20));

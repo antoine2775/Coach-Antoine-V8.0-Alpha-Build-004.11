@@ -1,3 +1,5 @@
+import { displayName } from "../utils/displayName.js";
+
 export const COMPLETION_MESSAGES = {
   tu: {
     experience: "As-tu déjà utilisé une application ou suivi un programme pour entretenir ta forme ?",
@@ -5,8 +7,9 @@ export const COMPLETION_MESSAGES = {
       "C’est important pour moi de le comprendre pour te proposer quelque chose qui te donne envie de continuer."],
     reasonThanks: "Merci de me l’avoir dit. Je vais essayer d’en tenir compte.",
     reasonDeclined: "Bien sûr, aucun problème.",
+    incomplete: "Le profil doit être complet et valide avant de terminer. Reviens aux étapes précédentes pour le compléter.",
     conclusion: (firstName) => [
-      `Je te connais déjà un peu mieux, ${firstName}.`,
+      `Je te connais déjà un peu mieux, ${displayName(firstName)}.`,
       "On a tout ce qu’il faut pour commencer.",
       "À partir de maintenant, je vais pouvoir te proposer des séances adaptées à ton niveau, à ton matériel et à ta forme du jour.",
       "Et on ajustera les choses ensemble au fil des séances.",
@@ -19,8 +22,9 @@ export const COMPLETION_MESSAGES = {
       "C’est important pour moi de le comprendre pour vous proposer quelque chose qui vous donne envie de continuer."],
     reasonThanks: "Merci de me l’avoir dit. Je vais essayer d’en tenir compte.",
     reasonDeclined: "Bien sûr, aucun problème.",
+    incomplete: "Le profil doit être complet et valide avant de terminer. Revenez aux étapes précédentes pour le compléter.",
     conclusion: (firstName) => [
-      `Je vous connais déjà un peu mieux, ${firstName}.`,
+      `Je vous connais déjà un peu mieux, ${displayName(firstName)}.`,
       "On a tout ce qu’il faut pour commencer.",
       "À partir de maintenant, je vais pouvoir vous proposer des séances adaptées à votre niveau, à votre matériel et à votre forme du jour.",
       "Et nous ajusterons les choses ensemble au fil des séances.",

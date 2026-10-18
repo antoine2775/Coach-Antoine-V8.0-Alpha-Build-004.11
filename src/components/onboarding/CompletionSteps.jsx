@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { COMPLETION_MESSAGES } from "../../onboarding/completionMessages";
+import { getStopReasonLabel } from "../../utils/personalizedTexts";
 import { EXPERIENCE_OPTIONS, STOP_REASON_OPTIONS, canCompleteOnboarding, prepareCompletionStep } from "../../onboarding/completionSteps";
 
 export default function CompletionSteps({ step }) {
@@ -46,7 +47,7 @@ export default function CompletionSteps({ step }) {
       <div className="onboarding-actions">
         {STOP_REASON_OPTIONS.map((option) => <button type="button" className="secondary-button" key={option.value}
           aria-pressed={profile.previousProgramStopReason === option.value}
-          onClick={() => submit("reasonDraft", option.value)}>{option.label}</button>)}
+          onClick={() => submit("reasonDraft", option.value)}>{getStopReasonLabel(option, profile)}</button>)}
         <button type="button" className="secondary-button" onClick={() => submit("reason", null)}>Passer cette question</button>
         {back}
       </div>
@@ -62,7 +63,7 @@ export default function CompletionSteps({ step }) {
           {back}
         </div>
       </> : <>
-        <p role="alert">Le profil doit être complet et valide avant de terminer. Revenez aux étapes précédentes pour le compléter.</p>
+        <p role="alert">{messages.incomplete}</p>
         <div className="onboarding-actions">{back}</div>
       </>}
     </>}

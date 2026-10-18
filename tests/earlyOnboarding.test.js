@@ -84,12 +84,28 @@ function setup(initial) {
     profile: () => readProfile(storage).profile,
     text: () => text(tree),
     buttons: () => nodes().filter((item) => item.type === "button").map(text),
+    pressed: (label) => button(label).props["aria-pressed"],
     lastResult: () => lastResult,
   };
 }
 
 const atName = (mode = "tu", sex = "female") => ({ ...createEmptyProfile(), addressMode: mode, sex, onboardingCurrentStep: 3 });
 const atAge = (mode = "tu", age = null) => ({ ...atName(mode), firstName: "Alex", age, onboardingCurrentStep: 4 });
+
+test("premier écran : texte neutre exact, indépendant du profil et sans adresse tu/vous", () => {
+  for (const profile of [undefined, { ...createEmptyProfile(), addressMode: "tu" }, { ...createEmptyProfile(), addressMode: "vous" }]) {
+    const ui = setup(profile);
+    const paragraphs = ["Bonjour, moi c’est Coach Antoine.",
+      "Mon rôle est d’accompagner chacun pour entretenir sa forme, à son rythme, avec des séances simples et adaptées.",
+      "Pas besoin d’être sportif : l’important, c’est de bouger régulièrement et d’avoir envie d’aller à la séance suivante.",
+      "Pour que ce soit plus simple entre nous, je propose qu’on se tutoie.",
+      "D’accord pour qu’on se tutoie ?"];
+    assert.equal(ui.text(), [...paragraphs, "Oui, on se tutoie", "Je préfère qu’on se vouvoie"].join(""));
+    assert.doesNotMatch(ui.text(), /\b(?:tu|te|toi|vous|votre|ton|ta)\b/);
+    assert.equal(ui.pressed("Oui, on se tutoie"), profile?.addressMode === "tu");
+    assert.equal(ui.pressed("Je préfère qu’on se vouvoie"), profile?.addressMode === "vous");
+  }
+});
 
 for (const [label, mode] of [["Oui, on se tutoie", "tu"], ["Je préfère qu’on se vouvoie", "vous"]]) {
   test(`choix ${mode} sauvegardé et explication dans le bon mode`, () => {
