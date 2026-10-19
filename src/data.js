@@ -23,16 +23,12 @@ export const dailyProgram = [
 
 export function getCoachSayings(profile) {
   const vous = profile?.addressMode === "vous";
-  const proud = profile?.sex === "female" ? "fière" : "fier";
   return [
   "Le plus difficile, c'est de commencer.",
   "Chaque séance compte.",
   vous ? "On avance à votre rythme." : "On avance à ton rythme.",
   vous ? "Respirez." : "Respire.",
   vous ? "Continuez comme ça." : "Continue comme ça.",
-  profile?.sex === "female" || profile?.sex === "male"
-    ? (vous ? `Vous pouvez être ${proud} de vous.` : `Tu peux être ${proud} de toi.`)
-    : "Chaque effort compte.",
   "Pas besoin d'en faire trop. Il faut surtout avoir envie de recommencer.",
 ];
 }

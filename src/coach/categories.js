@@ -1,1 +1,6 @@
-export const COACH_CATEGORIES = Object.freeze({WELCOME:"welcome",RETURN:"return",START:"start",ENCOURAGEMENT:"encouragement",WATER:"water",DUMBBELLS:"dumbbells",CHAIR:"chair",MAXIM:"maxim",FINISH_FIRST:"finishFirst",FINISH_SECOND:"finishSecond"});
+export const COACH_CATEGORIES = Object.freeze({
+  WELCOME: "welcome", RETURN: "return", START: "start", ENCOURAGEMENT: "encouragement",
+  WATER: "water", DUMBBELLS: "dumbbells", CHAIR: "chair", MAXIM: "maxim",
+  FINISH_FIRST: "finishFirst", FINISH_SECOND: "finishSecond",
+  FINISH_DAY_FORM: "finishDayForm", FINISH_SATISFACTION: "finishSatisfaction",
+});

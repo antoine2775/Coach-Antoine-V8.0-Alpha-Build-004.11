@@ -1,12 +1,72 @@
-import { COACH_CATEGORIES as C } from "./categories";
-export const COACH_PHRASES=Object.freeze({
-[C.WELCOME]:["Bonjour ! Je suis content de te retrouver.","Bonjour ! Prêt pour une belle séance ?","On prend notre temps et on fait les mouvements correctement."],
-[C.RETURN]:["Tu sais ce qui me plaît ?... Te voir revenir pour une nouvelle séance !"],
-[C.START]:["On commence tranquillement.","Aujourd'hui, on avance à ton rythme.","La qualité avant la quantité.","Un mouvement lent et maîtrisé… c'est dix fois mieux."],
-[C.ENCOURAGEMENT]:["C'est très bien.","Continue comme ça.","Parfait, garde ce rythme.","Respire tranquillement.","Contrôle bien le mouvement.","On ne cherche pas la vitesse, on cherche le bon geste.","Tu peux être fier de toi."],
-[C.WATER]:["Tous les coachs ont une bouteille d'eau à côté d'eux… et ils ont bien raison !","Une petite gorgée maintenant, ton corps te dira merci.","N'attends pas d'avoir soif pour boire.","L'eau est ta meilleure amie pendant l'entraînement."],
-[C.DUMBBELLS]:["Ouf... c'est pas si léger que ça !","Eh bien... on les sent quand même !","Finalement, ils ont du caractère, ces haltères !","Ça réveille les muscles, ça !"],
-[C.CHAIR]:["La chaise est là pour t'aider, profite-en.","Garde le dos bien droit.","On bouge sans se précipiter."],
-[C.MAXIM]:["Un mouvement lent et maîtrisé… c'est dix fois mieux.","La qualité avant la quantité.","On ne cherche pas la vitesse, on cherche le bon geste.","On avance à ton rythme.","Le plus difficile, c'est de commencer.","Chaque séance compte, même les plus courtes.","Respire… le mouvement viendra naturellement.","Contrôle le mouvement du début à la fin."],
-[C.FINISH_FIRST]:["Eh bien... voilà une bonne chose de faite !"],
-[C.FINISH_SECOND]:["Belle séance !... On se dit à demain ?"]});
+import { COACH_CATEGORIES as C } from "./categories.js";
+import { displayName } from "../utils/displayName.js";
+
+// Catalogue éditorial V1 : ordre de validation, identifiants logiques indépendants
+// du mode d'adresse, des accords et des contextes de sélection.
+const phrase = (id, frequency, tu, vous = tu, extra = {}) => Object.freeze({ id, frequency, tu, vous, ...extra });
+export const PHRASE_CATALOG = Object.freeze([
+  phrase("welcome-reunion", "frequent", "Bonjour ! Je suis content de te retrouver.", "Bonjour ! Je suis content de vous retrouver."),
+  phrase("welcome-ready", "occasional", "Bonjour ! Prêt pour une bonne séance ?", undefined,
+    { tuFemale: "Bonjour ! Prête pour une bonne séance ?", vousFemale: "Bonjour ! Prête pour une bonne séance ?" }),
+  phrase("movement-care", "occasional", "On prend son temps… et on privilégie vraiment la qualité du mouvement."),
+  phrase("return-pleasure", "occasional", "Tu sais ce que j’aime ?… Te voir revenir pour une nouvelle séance !", "Vous savez ce que j’aime ?… Vous voir revenir pour une nouvelle séance !"),
+  phrase("start-gently", "frequent", "On commence tranquillement."),
+  phrase("today-pace", "frequent", "On va avancer à ton rythme.", "On va avancer à votre rythme."),
+  phrase("quality-first", "frequent", "Prends ton temps… quelques mouvements bien faits, c’est ça qui compte.", "Prenez votre temps… quelques mouvements bien faits, c’est ça qui compte.", { contextRule: "quality" }),
+  phrase("slow-movement", "rare", "Un mouvement lent et maîtrisé… c’est bien plus efficace.", undefined, { contextRule: "quality" }),
+  phrase("gesture-first", "frequent", "On ne cherche pas la vitesse… ce qui compte, c’est de bien faire le mouvement.", undefined,
+    { contextRule: "quality", voiceDirection: Object.freeze({ pauseAfter: "vitesse", emphasis: "bien faire" }) }),
+  phrase("encouragement-good", "frequent", "C’est très bien.", undefined, { contextRule: "executionConfirmed" }),
+  phrase("encouragement-continue", "frequent", "Continue comme ça.", "Continuez comme ça.", { contextRule: "executionConfirmed" }),
+  phrase("keep-pace", "frequent", "Très bien, garde ce rythme.", "Très bien, gardez ce rythme.", { contextRule: "paceConfirmed" }),
+  phrase("breathe-calmly", "frequent", "Respire tranquillement.", "Respirez tranquillement.", { contextRule: "calmBreathing" }),
+  phrase("breathe-effort", "occasional", "Pense à bien respirer.", "Pensez à bien respirer.", { contextRule: "sustainedBreathing" }),
+  phrase("breathe-nose", "occasional", "Si tu peux, respire tranquillement par le nez.", "Si vous pouvez, respirez tranquillement par le nez.", { contextRule: "nasalBreathing" }),
+  phrase("breathe-naturally", "rare", "Respire calmement, comme d’habitude… et tu verras, le mouvement viendra naturellement. Ça deviendra une habitude.",
+    "Respirez calmement, comme d’habitude… et vous verrez, le mouvement viendra naturellement. Ça deviendra une habitude.", { contextRule: "breathingLearning" }),
+  phrase("water-habit", "occasional", "Mets une bouteille d’eau à côté de toi. Tu vas voir, ça va vite devenir une habitude.",
+    "Mettez une bouteille d’eau à côté de vous. Vous allez voir, ça va vite devenir une habitude.", { contextRule: "beforeSession", establishedFrequency: "rare" }),
+  phrase("dumbbells-feeling", "occasional", "Eh bien… on les sent quand même, à la fin de la série !", undefined, { contextRule: "demandingDumbbellsSet" }),
+  phrase("dumbbells-character", "veryRare", "Eh bien dis donc… ces haltères ont du caractère !", undefined, { contextRule: "appropriateDumbbellsSet" }),
+  phrase("dumbbells-muscles", "rare", "Ça va réchauffer les muscles, ça !", undefined, { contextRule: "strengthStart" }),
+  phrase("chair-discovery", "occasional", "Avec une simple chaise, on peut déjà faire pas mal de choses !", undefined, { contextRule: "chair" }),
+  phrase("finish-low", "occasional", "C’était une séance plus légère… mais tu gardes ton rythme d’entraînement, c’est bien.",
+    "C’était une séance plus légère… mais vous gardez votre rythme d’entraînement, c’est bien.", { contextRule: "finishLow" }),
+  phrase("finish-normal", "occasional", "C’était une bonne séance aujourd’hui, [Prénom] !", undefined, { contextRule: "finishNormal", usesName: true }),
+  phrase("finish-high", "occasional", "Une séance un peu soutenue aujourd’hui. Bravo [Prénom] !", undefined, { contextRule: "finishHigh", usesName: true }),
+  phrase("finish-satisfaction-long", "occasional", "Le plus dur, c’était de s’y mettre… mais après, on est vraiment content de l’avoir fait !", undefined,
+    { contextRule: "finishSatisfactionLong", exclusiveGroup: "finish-satisfaction" }),
+  phrase("finish-satisfaction-short", "occasional", "Et voilà… ça valait le coup de s’y mettre !", undefined,
+    { contextRule: "finishSatisfactionShort", exclusiveGroup: "finish-satisfaction" }),
+]);
+
+export const COACH_PHRASE_IDS = Object.freeze({
+  [C.WELCOME]: Object.freeze(["welcome-reunion", "welcome-ready", "movement-care"]),
+  [C.RETURN]: Object.freeze(["return-pleasure"]),
+  [C.START]: Object.freeze(["start-gently", "today-pace", "quality-first", "slow-movement", "gesture-first"]),
+  [C.ENCOURAGEMENT]: Object.freeze(["encouragement-good", "encouragement-continue", "keep-pace", "breathe-calmly", "breathe-effort", "breathe-nose", "breathe-naturally"]),
+  [C.WATER]: Object.freeze(["water-habit"]),
+  [C.DUMBBELLS]: Object.freeze(["dumbbells-feeling", "dumbbells-character", "dumbbells-muscles"]),
+  [C.CHAIR]: Object.freeze(["chair-discovery"]),
+  [C.MAXIM]: Object.freeze(["quality-first", "slow-movement", "gesture-first"]),
+  // Anciens points d'entrée conservés, avec la même exclusion par séance.
+  [C.FINISH_FIRST]: Object.freeze(["finish-satisfaction-long"]),
+  [C.FINISH_SECOND]: Object.freeze(["finish-satisfaction-short"]),
+  [C.FINISH_DAY_FORM]: Object.freeze(["finish-low", "finish-normal", "finish-high"]),
+  [C.FINISH_SATISFACTION]: Object.freeze(["finish-satisfaction-long", "finish-satisfaction-short"]),
+});
+
+export function renderCoachPhrase(phrase, profile) {
+  const mode = profile?.addressMode === "vous" ? "vous" : "tu";
+  const text = (profile?.sex === "female" && phrase[mode + "Female"]) || phrase[mode];
+  if (!phrase.usesName) return text;
+  const name = displayName(profile?.firstName);
+  // Aucun texte de repli inventé : un prénom indisponible autorise le silence.
+  return name ? text.replace("[Prénom]", name) : "";
+}
+
+// Vue de compatibilité / inspection : les gabarits ne sont pas des interventions.
+export const COACH_PHRASES = Object.freeze(Object.fromEntries(
+  Object.entries(COACH_PHRASE_IDS).map(([category, ids]) => [category, Object.freeze(
+    ids.map(id => PHRASE_CATALOG.find(phrase => phrase.id === id).tu))])
+));

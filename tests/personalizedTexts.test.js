@@ -47,8 +47,8 @@ for (const addressMode of ["tu", "vous"]) for (const sex of ["male", "female"]) 
     const carnet = renderPage("Carnet", profile);
     assert.ok(carnet.includes(texts.zzTop));
     assert.ok(carnet.includes(texts.understand));
-    const proud = sex === "female" ? "fière" : "fier";
-    assert.ok(carnet.includes(addressMode === "vous" ? `Vous pouvez être ${proud} de vous.` : `Tu peux être ${proud} de toi.`));
+    assert.doesNotMatch(carnet, /(?:Tu peux|Vous pouvez) être (?:fier|fière) de (?:toi|vous)\./);
+    assert.equal((carnet.match(/<blockquote/g) || []).length, 7); // Six citations et le texte ZZ Top.
     for (const html of [home, workout, progress, carnet]) {
       assert.doesNotMatch(html, /Bonjour Antoine|Bravo Antoine|undefined|\bnull\b|prêt\(e\)/);
     }

@@ -1,0 +1,20 @@
+// Scénarios explicites réservés au Garage ; ils ne pilotent jamais une séance.
+export const PREVIEW_CONTEXTS = Object.freeze([
+  { label: "Aucun contexte précisé", context: {} },
+  { label: "Conseil de qualité du mouvement", context: { qualityGuidanceRelevant: true } },
+  { label: "Exécution réellement confirmée", context: { executionQualityConfirmed: true } },
+  { label: "Rythme réellement confirmé", context: { expectedPaceConfirmed: true } },
+  { label: "Mobilité calme", context: { exerciseKind: "mobility", effort: "calm" } },
+  { label: "Effort soutenu", context: { effort: "sustained" } },
+  { label: "Exercice modéré compatible avec la respiration nasale", context: { effort: "moderate", controlledExercise: true, nasalBreathingAppropriate: true } },
+  { label: "Apprentissage de la respiration approprié", context: { effort: "moderate", breathingGuidanceRelevant: true } },
+  { label: "Avant la séance", context: { phase: "beforeSession" } },
+  { label: "Avant la séance, habitude d’hydratation établie", context: { phase: "beforeSession", hydrationHabitEstablished: true } },
+  { label: "Après une série d’haltères appropriée et sollicitante", context: { phase: "afterSet", equipment: "dumbbells", appropriateSet: true, sufficientlyDemanding: true, physicalDifficulty: false } },
+  { label: "Début du renforcement sans difficulté physique", context: { phase: "strengthStart", physicalDifficulty: false } },
+  { label: "Utilisation de la chaise", context: { equipment: "chair" } },
+  { label: "Fin de séance Petite forme", context: { phase: "sessionEnd", dayForm: "low", sessionId: "garage-preview" } },
+  { label: "Fin de séance En forme", context: { phase: "sessionEnd", dayForm: "normal", sessionId: "garage-preview" } },
+  { label: "Fin de séance Pleine forme", context: { phase: "sessionEnd", dayForm: "high", sessionId: "garage-preview" } },
+  { label: "Retour au calme", context: { phase: "cooldown", exerciseKind: "cooldown", sessionId: "garage-preview" } },
+]);
