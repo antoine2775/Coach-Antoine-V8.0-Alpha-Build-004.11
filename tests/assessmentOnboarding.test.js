@@ -38,7 +38,7 @@ test("sécurité obligatoire : confirmation booléenne, aucune donnée médicale
   assert.equal(profile.onboardingCurrentStep, 6);
   assert.equal(profile.onboardingCompleted, false);
   assert.deepEqual(Object.keys(profile).filter((key) => !Object.hasOwn(createEmptyProfile(), key)), ["safetyConfirmed"]);
-  assert.equal(assessment.prepareAssessmentStep(draft(6), "equipment", []).ok, true);
+  assert.equal(assessment.prepareAssessmentStep(draft(6), "equipment", []).ok, false);
   assert.equal(assessment.prepareAssessmentStep({ ...draft(6), safetyConfirmed: false }, "equipment", []).ok, false);
 });
 
@@ -53,8 +53,8 @@ test("matériel : aucun, un, plusieurs et exclusivité bidirectionnelle", () => 
   assert.deepEqual(assessment.toggleEquipment([], "longBar", true), ["longBar"]);
   assert.deepEqual(assessment.toggleEquipment(["longBar"], "longBar", false), []);
   assert.equal(assessment.toggleEquipment([], "chair", true), null);
-  assert.deepEqual(apply(draft(6), "equipment", []).equipment, []);
-  assert.deepEqual(apply(draft(6), "equipment", ["dumbbells", "longBar"]).equipment, ["dumbbells", "longBar"]);
+  assert.deepEqual(apply({ ...draft(6), equipmentSelectionMade: true }, "equipment", []).equipment, []);
+  assert.deepEqual(apply({ ...draft(6), equipmentSelectionMade: true }, "equipment", ["dumbbells", "longBar"]).equipment, ["dumbbells", "longBar"]);
   for (const invalid of [["none"], ["chair"], ["wall"], ["dumbbells", "dumbbells"], null]) {
     assert.equal(assessment.prepareAssessmentStep(draft(6), "equipment", invalid).ok, false);
   }
@@ -190,7 +190,7 @@ function setup(initial = draft()) {
     if (Array.isArray(node)) return expand({ type: "fragment", props: { children: node } }, path);
     if (typeof node.type === "function") {
       active = `${path}/${node.type.name}`; index = 0;
-      return expand(node.type(node.props), active);
+      return expand(node.type({ ...node.props, children: node.props.children.length === 1 ? node.props.children[0] : node.props.children }), active);
     }
     return { ...node, props: { ...node.props, children: node.props.children.flat(Infinity).map((child, i) => expand(child, `${path}/${i}`)) } };
   }
@@ -222,7 +222,8 @@ for (const [mode, transition] of [["tu", "De ton côté, confirme simplement cec
   ["vous", "De votre côté, confirmez simplement ceci :"]]) {
   test(`écran sécurité ${mode} : parole du coach puis déclaration de l’utilisateur`, () => {
     const ui = setup(draft(5, mode));
-    const paragraphs = ui.nodes().filter((node) => node.type === "p").map((node) => node.props.children.join(""));
+    const content = (node) => typeof node === "object" && node !== null ? node.props.children.map(content).join("") : String(node ?? "");
+    const paragraphs = ui.nodes().filter((node) => node.type === "p").map(content);
     assert.deepEqual(paragraphs, [ASSESSMENT_MESSAGES[mode].safety, transition, ...ASSESSMENT_MESSAGES[mode].confirmation]);
     assert.ok(ui.text().includes("J’ai lu et je confirme"));
   });
@@ -230,7 +231,7 @@ for (const [mode, transition] of [["tu", "De ton côté, confirme simplement cec
 
 test("Q5 à Q7 : formulations validées en vouvoiement", () => {
   assert.deepEqual(QUESTIONS.slice(4, 7).map((question) => question.textVous), [
-    "En ce moment, à quelle fréquence faites-vous une activité physique pour entretenir votre forme générale ?",
+    "En ce moment, à quelle fréquence pratiquez-vous une activité physique pour entretenir votre forme ?",
     "Et plus précisément, faites-vous des exercices pour entretenir ou renforcer vos muscles ?",
     "Et des exercices pour entretenir votre souplesse ou votre mobilité ?",
   ]);
@@ -275,6 +276,8 @@ for (const mode of ["tu", "vous"]) {
       const labels = ui.nodes().filter((node) => node.type === "button").map((node) => node.props.children.join(""));
       assert.deepEqual(labels, [...QUESTIONS[i].answers.map((answer) => answer.text), "Retour"]);
       const bar = ui.nodes().find((node) => node.props.role === "progressbar");
+      assert.ok(ui.text().includes("Avancée du questionnaire"));
+      assert.ok(ui.nodes().find((node) => node.type === "h2").props.className.includes("onboarding-question"));
       assert.equal(bar.props["aria-valuenow"], i + 1);
       assert.equal(bar.props["aria-valuemax"], 9);
     }
@@ -294,7 +297,7 @@ test("questionnaire à l'écran : sauvegarde, recharge, Retour et modification",
   assert.equal(ui.profile().proposedLevel, "forme");
   assert.equal(ui.profile().assessmentVersion, QUESTIONNAIRE_VERSION);
   assert.ok(Number.isFinite(Date.parse(ui.profile().assessmentDate)));
-  assert.ok(ui.text().includes(ASSESSMENT_MESSAGES.tu.proposal("Forme")));
+  assert.ok(ui.text().includes(ASSESSMENT_MESSAGES.tu.proposal("Équilibré")));
 });
 
 for (const mode of ["tu", "vous"]) {
@@ -307,7 +310,7 @@ for (const mode of ["tu", "vous"]) {
     assert.ok(ui.text().includes(expected));
     ASSESSMENT_MESSAGES[mode].proposalDetails.forEach((paragraph) => assert.ok(ui.text().includes(paragraph)));
     assert.equal(ui.profile().selectedLevel, null);
-    ui.click("Ça me convient");
+    ui.click("Commencer avec ce niveau");
     assert.equal(ui.profile().selectedLevel, "forme");
     assert.equal(ui.profile().levelOrigin, "coach");
     assert.equal(ui.profile().onboardingCurrentStep, 18);
@@ -319,7 +322,7 @@ for (const level of ["reprise", "forme", "tonique"]) {
   test(`choix manuel ${level} explicite, y compris si identique à la proposition`, () => {
     const ui = setup(proposal());
     ui.click("Je préfère choisir mon niveau");
-    assert.equal(ui.button("Valider mon choix").props.disabled, true);
+    assert.equal(ui.button("Valider mon choix").props.disabled, false);
     ui.check(assessment.LEVEL_LABELS[level], true);
     ui.click("Valider mon choix");
     assert.equal(ui.profile().selectedLevel, level);
@@ -342,7 +345,129 @@ test("aucune nouvelle clé localStorage, historiques et réglages inchangés", (
   const ui = setup(proposal());
   const keys = ["coachAntoineSound", "coachAntoineRestDuration", "coachAntoineDayForm", "coachAntoineHistory", "coachAntoineWeight", "coachAntoineBrainV1"];
   keys.forEach((key) => ui.storage.data.set(key, "unchanged"));
-  ui.click("Ça me convient");
+  ui.click("Commencer avec ce niveau");
   keys.forEach((key) => assert.equal(ui.storage.getItem(key), "unchanged"));
   assert.deepEqual([...ui.storage.data.keys()].sort(), [...keys, PROFILE_KEY].sort());
 });
+
+const descriptions = {
+  reprise: "Un niveau pour démarrer ou reprendre en douceur, avec un rythme progressif et des exercices accessibles.",
+  forme: "Un niveau intermédiaire pour entretenir régulièrement ta forme, avec des exercices accessibles mais suffisamment actifs.",
+  tonique: "Un niveau plus soutenu, pour ceux qui se sentent à l’aise avec les exercices et souhaitent davantage de rythme et d’intensité.",
+};
+const changes = {
+  reprise: "Tu pourras à tout moment choisir un niveau plus soutenu.",
+  forme: "Tu pourras à tout moment choisir un niveau plus facile ou plus soutenu.",
+  tonique: "Tu pourras à tout moment choisir un niveau plus facile.",
+};
+for (const mode of ["tu", "vous"]) {
+  for (const [answer, level, label] of [["c", "reprise", "Reprise"], ["b", "forme", "Équilibré"], ["a", "tonique", "Tonique"]]) {
+    test(`recommandation ${mode}/${label} : descriptif exact et changement dynamique`, () => {
+      const ui = setup(proposal(Array(9).fill(answer), mode));
+      const description = mode === "vous" ? descriptions[level].replace("ta forme", "votre forme") : descriptions[level];
+      const change = mode === "vous" ? changes[level].replace("Tu pourras", "Vous pourrez") : changes[level];
+      assert.ok(ui.text().includes(ASSESSMENT_MESSAGES[mode].proposal(label)));
+      assert.ok(ui.text().includes(description));
+      assert.ok(ui.text().includes(change));
+      for (const other of Object.keys(changes).filter((key) => key !== level)) {
+        assert.ok(!ui.text().includes(ASSESSMENT_MESSAGES[mode].levelChange[other]));
+      }
+      ui.click("Commencer avec ce niveau");
+      assert.equal(ui.profile().selectedLevel, level);
+      assert.equal(ui.profile().onboardingCompletionStage, "transition");
+    });
+  }
+  test(`choix manuel ${mode} : descriptif avant validation et remplacement de la sélection`, () => {
+    const ui = setup(proposal(Array(9).fill("b"), mode));
+    ui.click("Je préfère choisir mon niveau");
+    assert.equal(ui.button("Valider mon choix").props.disabled, false);
+    for (const level of ["reprise", "forme", "tonique"]) {
+      assert.equal(ui.text().includes(ASSESSMENT_MESSAGES[mode].levelDescriptions[level]), level === "forme");
+    }
+    for (const level of ["reprise", "forme", "tonique"]) {
+      ui.check(assessment.LEVEL_LABELS[level], true);
+      assert.equal(ui.button("Valider mon choix").props.disabled, false);
+      assert.ok(ui.text().includes(ASSESSMENT_MESSAGES[mode].levelDescriptions[level]));
+      const radios = ui.nodes().filter((node) => node.type === "input");
+      assert.equal(radios.filter((node) => node.props.checked).length, 1);
+      assert.equal(ui.profile().selectedLevel, null);
+    }
+    ui.click("Valider mon choix");
+    assert.equal(ui.profile().selectedLevel, "tonique");
+    assert.equal(ui.profile().onboardingCompletionStage, "transition");
+  });
+}
+
+test("échec d’acceptation du niveau : rester sur la proposition, sans transition sauvegardée", () => {
+  const ui = setup(proposal());
+  ui.storage.setItem = () => { throw Error("quota"); };
+  ui.click("Commencer avec ce niveau");
+  assert.equal(ui.profile().onboardingCurrentStep, 17);
+  assert.equal(ui.profile().selectedLevel, null);
+  assert.equal(ui.profile().onboardingCompletionStage, undefined);
+});
+
+test("matériel vierge : aucun choix initial, choix explicite et reprise", () => {
+  let ui = setup(draft(6));
+  assert.equal(ui.nodes().filter((node) => node.type === "input" && node.props.checked).length, 0);
+  assert.equal(ui.button("Continuer").props.disabled, true);
+  assert.equal(assessment.prepareAssessmentStep(ui.profile(), "equipment", []).ok, false);
+  ui = setup(ui.profile());
+  assert.equal(ui.nodes().filter((node) => node.type === "input" && node.props.checked).length, 0);
+  ui.check("Non, pas de matériel", true);
+  assert.equal(ui.profile().equipmentSelectionMade, true);
+  ui = setup(ui.profile());
+  assert.equal(ui.nodes().filter((node) => node.type === "input" && node.props.checked).length, 1);
+  assert.equal(ui.button("Continuer").props.disabled, false);
+  ui.click("Continuer");
+  assert.equal(ui.profile().onboardingCurrentStep, 7);
+});
+
+test("ancien profil matériel : absence du marqueur compatible avec [] et sélection multiple", () => {
+  for (const equipment of [[], ["dumbbells", "longBar"]]) {
+    const old = { ...draft(6), equipment };
+    delete old.equipmentSelectionMade;
+    const ui = setup(old);
+    assert.equal(readProfile(ui.storage).status, "valid");
+    assert.equal(ui.button("Continuer").props.disabled, false);
+    assert.equal(ui.nodes().filter((node) => node.type === "input" && node.props.checked).length, equipment.length || 1);
+    ui.click("Continuer");
+    assert.deepEqual(ui.profile().equipment, equipment);
+    assert.equal(ui.profile().equipmentSelectionMade, true);
+  }
+});
+
+test("Retour puis réponse modifiée : remplace une case, recalcul exact sans cumul", () => {
+  const ui = setup(proposal(Array(9).fill("a")));
+  assert.equal(ui.profile().proposedLevel, "tonique");
+  for (let i = 0; i < 9; i++) ui.click("Retour");
+  assert.equal(ui.profile().onboardingCurrentStep, 8);
+  const chosen = ui.nodes().filter((node) => node.type === "button" && node.props["aria-pressed"]);
+  assert.equal(chosen.length, 1);
+  assert.equal(chosen[0].props.children[0], QUESTIONS[0].answers[0].text);
+  assert.deepEqual(ui.profile().assessmentAnswers, Array(9).fill("a"));
+  ui.click(QUESTIONS[0].answers[2].text);
+  assert.equal(ui.profile().proposedLevel, null);
+  for (let i = 1; i < 9; i++) ui.click(QUESTIONS[i].answers[0].text);
+  assert.deepEqual(ui.profile().assessmentAnswers, ["c", ...Array(8).fill("a")]);
+  assert.deepEqual(evaluateLevel(ui.profile().assessmentAnswers), { capacityScore: 12, activityScore: 15, proposedLevel: "forme" });
+  assert.equal(ui.profile().proposedLevel, "forme");
+});
+
+for (const [answer, level] of [["c", "reprise"], ["b", "forme"], ["a", "tonique"]]) {
+  test(`choix manuel : recommandation ${level} présélectionnée et validable immédiatement`, () => {
+    const ui = setup(proposal(Array(9).fill(answer)));
+    ui.click("Je préfère choisir mon niveau");
+    assert.ok(ui.text().includes("Clique sur un niveau pour voir sa description."));
+    assert.equal(ui.button("Valider mon choix").props.disabled, false);
+    const selected = ui.nodes().filter((node) => node.type === "input" && node.props.checked);
+    assert.equal(selected.length, 1);
+    assert.equal(selected[0].props.value, level);
+    for (const key of ["reprise", "forme", "tonique"]) {
+      assert.equal(ui.text().includes(ASSESSMENT_MESSAGES.tu.levelDescriptions[key]), key === level);
+    }
+    ui.click("Valider mon choix");
+    assert.equal(ui.profile().selectedLevel, level);
+    assert.equal(ui.profile().levelOrigin, "manual");
+  });
+}

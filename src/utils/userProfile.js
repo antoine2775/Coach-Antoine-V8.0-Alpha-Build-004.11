@@ -16,6 +16,7 @@ export function createEmptyProfile() {
     sex: null,
     addressMode: null,
     equipment: [],
+    equipmentSelectionMade: false,
     proposedLevel: null,
     selectedLevel: null,
     levelOrigin: null,
@@ -57,7 +58,8 @@ function completionReady(profile) {
 export function validateProfile(profile) {
   try {
     if (!object(profile) || !isJsonValue(profile)) return false;
-    if (!Object.keys(createEmptyProfile()).every((key) => Object.hasOwn(profile, key))) return false;
+    if (!Object.keys(createEmptyProfile()).filter((key) => key !== "equipmentSelectionMade")
+      .every((key) => Object.hasOwn(profile, key))) return false;
     const valid = profile.profileVersion === PROFILE_VERSION &&
       typeof profile.firstName === "string" &&
       (profile.age === null || (Number.isInteger(profile.age) && profile.age >= 0)) &&
@@ -65,6 +67,7 @@ export function validateProfile(profile) {
       optionalChoice(profile.addressMode, ["tu", "vous"]) &&
       Array.isArray(profile.equipment) && profile.equipment.every((item) => EQUIPMENT.includes(item)) &&
       new Set(profile.equipment).size === profile.equipment.length &&
+      (!Object.hasOwn(profile, "equipmentSelectionMade") || typeof profile.equipmentSelectionMade === "boolean") &&
       optionalChoice(profile.proposedLevel, LEVELS) && optionalChoice(profile.selectedLevel, LEVELS) &&
       optionalChoice(profile.levelOrigin, ["coach", "manual"]) &&
       Array.isArray(profile.assessmentAnswers) && profile.assessmentAnswers.length === 9 &&
@@ -72,6 +75,10 @@ export function validateProfile(profile) {
       optionalString(profile.assessmentVersion) &&
       optionalChoice(profile.previousProgramExperience, EXPERIENCES) &&
       optionalString(profile.previousProgramStopReason) &&
+      (!Object.hasOwn(profile, "currentProgramMissing") || optionalChoice(profile.currentProgramMissing,
+        ["personalizedSupport", "adaptedSessions", "variety", "progressTracking", "unsure"])) &&
+      (!Object.hasOwn(profile, "onboardingCompletionStage") || optionalChoice(profile.onboardingCompletionStage,
+        ["transition", "experience", "question", "reaction"])) &&
       Number.isInteger(profile.onboardingCurrentStep) && profile.onboardingCurrentStep >= 0 &&
       typeof profile.onboardingCompleted === "boolean";
     return valid && (!profile.onboardingCompleted || completionReady(profile));

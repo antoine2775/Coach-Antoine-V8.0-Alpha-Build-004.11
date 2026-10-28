@@ -40,7 +40,7 @@ ne permettent pas de décider de réinitialiser un profil.
 | `sex` | `female`, `male` ; `null` avant saisie |
 | `addressMode` | `tu`, `vous` ; `null` avant saisie |
 | `equipment` | Liste sans doublons : `dumbbells`, `longBar`, `resistanceBands` ; `[]` = aucun matériel sportif |
-| `proposedLevel` | `reprise`, `forme`, `tonique` ; `null` avant évaluation |
+| `proposedLevel` | `reprise`, `forme`, `tonique` ; `forme` s'affiche « Équilibré » ; `null` avant évaluation |
 | `selectedLevel` | Mêmes valeurs ; `null` avant décision |
 | `levelOrigin` | `coach` = proposition acceptée, `manual` = choix explicite ; `null` avant décision |
 | `assessmentAnswers` | Tableau ordonné de 9 réponses JSON ; 9 valeurs `null` par défaut |
@@ -48,6 +48,8 @@ ne permettent pas de décider de réinitialiser un profil.
 | `assessmentVersion` | Identifiant textuel du questionnaire, par exemple `"1"` ; `null` par défaut |
 | `previousProgramExperience` | `current` = utilise encore ; `stopped` = a arrêté ; `never` = jamais vraiment ; `null` par défaut |
 | `previousProgramStopReason` | Chaîne optionnelle ; `null` par défaut |
+| `currentProgramMissing` | Extension optionnelle : `personalizedSupport`, `adaptedSessions`, `variety`, `progressTracking`, `unsure` ou `null` |
+| `onboardingCompletionStage` | Extension optionnelle : `transition`, `experience`, `question`, `reaction` ou `null` ; les anciens profils peuvent omettre ce champ |
 | `onboardingCurrentStep` | Entier >= 0 ; `0` par défaut ; les écrans futurs définiront les étapes |
 | `onboardingCompleted` | Booléen, `false` par défaut |
 
@@ -95,3 +97,10 @@ pas partie de ce profil. Pas de synchronisation multi-fenêtres dans ce lot.
 
 Sans dépendance supplémentaire : `node --test tests/userProfile.test.js`.
 Compilation habituelle : `npm run build` (génère uniquement `dist`, ignoré par Git).
+
+### Choix explicite du matériel dans l'onboarding
+
+`equipmentSelectionMade` est un booléen optionnel de compatibilité. Les nouveaux
+profils le créent à false, puis le passent à true avec la sauvegarde d'un choix de
+matériel, y compris []. Les profils antérieurs sans ce champ restent valides et
+conservent l'interprétation historique de leur équipement, sans migration à la lecture.

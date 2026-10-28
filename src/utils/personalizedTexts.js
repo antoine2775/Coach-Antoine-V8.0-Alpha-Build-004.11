@@ -2,6 +2,9 @@ import { displayName } from "./displayName.js";
 
 // Variantes rédigées explicitement ; aucune substitution de mots à l'exécution.
 export function getStopReasonLabel(option, profile) {
+  if (option.value === "notSupportedOrMotivated" && profile?.sex === "female") {
+    return "Je ne me sentais pas assez accompagnée ni assez motivée";
+  }
   return option.value === "notSupportedEnough" && profile?.sex === "female"
     ? "Je ne me sentais pas assez accompagnée" : option.label;
 }

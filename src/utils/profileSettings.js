@@ -2,7 +2,7 @@ import { validateProfile } from "./userProfile.js";
 
 export const LEVEL_OPTIONS = Object.freeze([
   { value: "reprise", label: "Reprise" },
-  { value: "forme", label: "Forme" },
+  { value: "forme", label: "Équilibré" },
   { value: "tonique", label: "Tonique" },
 ].map(Object.freeze));
 export const EQUIPMENT_OPTIONS = Object.freeze([

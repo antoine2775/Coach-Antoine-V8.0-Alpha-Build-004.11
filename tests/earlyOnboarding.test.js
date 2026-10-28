@@ -50,7 +50,7 @@ function setup(initial) {
     if (typeof node.type === "function") {
       active = `${path}/${node.type.name}`;
       index = 0;
-      return expand(node.type(node.props), active);
+      return expand(node.type({ ...node.props, children: node.props.children.length === 1 ? node.props.children[0] : node.props.children }), active);
     }
     return { ...node, props: { ...node.props, children: node.props.children.flat(Infinity).map((child, i) => expand(child, `${path}/${i}`)) } };
   }
@@ -82,6 +82,7 @@ function setup(initial) {
   render();
   return { data, storage, attempts, click, input, submit, render,
     profile: () => readProfile(storage).profile,
+    button, nodes,
     text: () => text(tree),
     buttons: () => nodes().filter((item) => item.type === "button").map(text),
     pressed: (label) => button(label).props["aria-pressed"],
@@ -269,4 +270,30 @@ test("transitions pures : pas de nouvelle étape construite au-delà de sécurit
   const draft = atAge();
   prepareEarlyStep("age", "17");
   assert.deepEqual(draft, atAge());
+});
+
+test("nouveau profil : choix Femme/Homme neutres et réponse enregistrée au retour", () => {
+  const ui = setup({ ...createEmptyProfile(), onboardingCurrentStep: 2 });
+  for (const label of ["Femme", "Homme"]) {
+    assert.equal(ui.pressed(label), false);
+    assert.ok(ui.button(label).props.className.includes("secondary-button"));
+    assert.ok(!ui.button(label).props.className.includes("primary-button"));
+  }
+  ui.click("Femme"); ui.click("Retour");
+  assert.equal(ui.pressed("Femme"), true);
+  assert.equal(ui.pressed("Homme"), false);
+});
+
+test("âge : Continuer désactivé avant saisie et pour toute valeur invalide", () => {
+  const ui = setup(atAge());
+  for (const value of ["", "0", "-1", "2.5", "abc", "9007199254740992"]) {
+    ui.input("age", value);
+    assert.equal(ui.button("Continuer").props.disabled, true, value);
+  }
+  for (const value of ["17", "18", "40"]) {
+    ui.input("age", value);
+    assert.equal(ui.button("Continuer").props.disabled, false);
+  }
+  ui.input("age", "");
+  assert.equal(ui.button("Continuer").props.disabled, true);
 });

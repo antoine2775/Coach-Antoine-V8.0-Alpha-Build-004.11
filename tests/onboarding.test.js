@@ -39,7 +39,7 @@ test("séquence V1 stable : sexe avant prénom, neuf questions, fin et abandon c
     assert.equal(step.index, index);
     assert.ok(Object.isFrozen(step));
   });
-  assert.equal(ONBOARDING_STEPS[19].condition, "stopped");
+  assert.equal(ONBOARDING_STEPS[19].condition, "current-or-stopped");
 });
 
 test("chargement, absence et brouillon : pas de profil créé automatiquement", () => {
@@ -126,7 +126,7 @@ for (const route of ["/", "/seances", "/progression", "/carnet", "/coach", "/gar
 test("le questionnaire reprend la question mémorisée sans afficher les étapes suivantes", () => {
   const html = renderRoutes(stateFrom(storageWith({ ...profiles.createEmptyProfile(), onboardingCurrentStep: 10 })), "/seances");
   assert.match(html, /data-onboarding-resuming="true"/);
-  assert.ok(html.includes(QUESTIONS[2].text));
+  assert.ok(html.replace(/<[^>]*>/g, "").includes(QUESTIONS[2].text));
   assert.match(html, /role="progressbar"/);
   assert.doesNotMatch(html, /Question 3 sur 9/);
   assert.doesNotMatch(html, /<input|<select|Terminer/);
@@ -355,3 +355,14 @@ test("splash neutre : aucun prénom supposé ni salutation genrée", () => {
   assert.match(html, /C&#x27;est parti !/);
   assert.doesNotMatch(html, /Bonjour Antoine|Prêt/);
 });
+
+for (const mode of ["tu", "vous"]) {
+  test(`titre du niveau ${mode} : remplace le titre générique uniquement à la proposition`, () => {
+    const profile = { ...completedProfile(), addressMode: mode, onboardingCurrentStep: 17, onboardingCompleted: false };
+    const html = renderRoutes(stateFrom(storageWith(profile)));
+    assert.ok(html.includes(`<h1>${mode === "vous" ? "Votre niveau de départ" : "Ton niveau de départ"}</h1>`));
+    assert.doesNotMatch(html, /Faisons connaissance/);
+    const other = renderRoutes(stateFrom(storageWith({ ...profile, onboardingCurrentStep: 18 })));
+    assert.match(other, /<h1>Faisons connaissance\.<\/h1>/);
+  });
+}

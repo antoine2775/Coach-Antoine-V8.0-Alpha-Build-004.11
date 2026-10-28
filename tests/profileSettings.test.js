@@ -118,7 +118,7 @@ function setup(initial = completedProfile()) {
 
 test("interface : niveau, matériel et mode actuels sélectionnés dès l’ouverture", () => {
   const ui = setup();
-  assert.equal(ui.input("Forme").props.checked, true);
+  assert.equal(ui.input("Équilibré").props.checked, true);
   assert.equal(ui.input("Reprise").props.checked, false);
   assert.equal(ui.input("Haltères").props.checked, true);
   assert.equal(ui.input("Aucun matériel").props.checked, false);
@@ -128,7 +128,7 @@ test("interface : niveau, matériel et mode actuels sélectionnés dès l’ouve
 
 test("interface : chaque niveau sauvegardé immédiatement et conservé après rechargement", () => {
   let ui = setup();
-  for (const [label, value] of [["Reprise", "reprise"], ["Tonique", "tonique"], ["Forme", "forme"]]) {
+  for (const [label, value] of [["Reprise", "reprise"], ["Tonique", "tonique"], ["Équilibré", "forme"]]) {
     ui.choose(label);
     assert.equal(ui.profile().selectedLevel, value);
     assert.equal(ui.profile().levelOrigin, "manual");
@@ -177,7 +177,7 @@ for (const label of ["Tonique", "Aucun matériel", "Vouvoiement"]) {
     ui.storage.setItem = () => { throw Error("quota"); };
     ui.choose(label);
     assert.deepEqual(ui.profile(), before);
-    assert.equal(ui.input("Forme").props.checked, true);
+    assert.equal(ui.input("Équilibré").props.checked, true);
     assert.equal(ui.input("Haltères").props.checked, true);
     assert.equal(ui.input("Tutoiement").props.checked, true);
     assert.ok(ui.text().includes(settings.PROFILE_SETTINGS_MESSAGES.tu.error));

@@ -15,10 +15,11 @@ const errors = {
 export default function Onboarding() {
   const { onboarding, saveError, reloadProfile } = useUserProfile();
   const error = errors[onboarding.status];
-  return <main className="page" data-onboarding-status={onboarding.status}>
+  const levelTitle = onboarding.step?.id === "level-proposal";
+  return <main className="page onboarding-page" data-onboarding-status={onboarding.status}>
     <header className="page-header">
       <p className="eyebrow">COACH ANTOINE</p>
-      <h1>Faisons connaissance.</h1>
+      <h1>{levelTitle ? (onboarding.profile.addressMode === "vous" ? "Votre niveau de départ" : "Ton niveau de départ") : "Faisons connaissance."}</h1>
     </header>
     {onboarding.status === "loading" && <p role="status">Chargement du profil…</p>}
     {error && <section className="card">

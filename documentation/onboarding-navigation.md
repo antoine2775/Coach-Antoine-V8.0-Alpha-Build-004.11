@@ -1,5 +1,45 @@
 # Onboarding V1 — Lots 4A à 4D
 
+## Révision du parcours du 28 octobre 2026
+
+Cette révision remplace les descriptions historiques du lot 4D ci-dessous.
+Le niveau intermédiaire s'affiche « Équilibré » ; sa valeur technique reste `forme`.
+Le barème, la version du questionnaire, les réponses et les indices 0 à 20 restent
+inchangés. Seules les formulations Q3, Q4, Q5, Q8 et Q9 sont révisées, en tu/vous.
+
+La proposition et le choix manuel affichent le titre « Ton niveau de départ »
+(« Votre niveau de départ » en vouvoiement), les descriptifs des niveaux et une
+phrase de changement adaptée au niveau recommandé. La validation du niveau mène
+à une transition à l'index 18, puis au choix de l'expérience au même index.
+
+- `current` : question complémentaire à l'index 19, cinq choix uniques, réponse
+  enregistrée dans `currentProgramMissing`, puis réaction et conclusion (20).
+- `stopped` : même index 19, cinq nouveaux motifs, réponse enregistrée dans
+  `previousProgramStopReason`, puis même réaction et conclusion (20).
+- `never` : conclusion directe (20).
+
+`onboardingCompletionStage` mémorise `transition`, `experience`, `question` ou
+`reaction` ; `null` marque la sortie de ces sous-écrans. Ces deux nouveaux champs
+sont des extensions optionnelles du profil V1, dans la même clé localStorage.
+Une sauvegarde doit réussir avant tout changement d'écran, y compris Retour.
+
+Retour depuis la conclusion retrouve la réaction de la branche répondue ; depuis
+la réaction il retrouve la question, puis l'expérience, puis la transition, puis
+la proposition. Pour `never`, la conclusion revient directement à l'expérience.
+Changer de branche efface la réponse devenue sans objet ; changer la réponse
+remplace le choix précédent. Il n'y a plus de motif libre, refus ou saut de question.
+
+Les profils existants ne sont ni réécrits ni migrés à la lecture. Sans sous-état,
+l'index 18 reprend l'expérience et le 19 reprend les motifs. Les anciens motifs
+restent lisibles ; un profil incomplet à l'index 20 sans réponse aujourd'hui valide
+affiche le message de profil incomplet et Retour vers la question à renseigner.
+Les profils déjà terminés gardent l'accès à l'application. Aucune séance ni règle
+de forme du jour n'est modifiée. Les réactions et la transition sont reprises
+exactement après rechargement. La conclusion utilise le prénom et le mode d'adresse.
+
+Les sections suivantes décrivent l'historique des lots et peuvent donc mentionner
+l'ancienne branche facultative et l'ancienne conclusion.
+
 Le lot 4A fournit le conteneur et le garde de navigation. Le lot 4B rend utilisables
 les cinq premières étapes : introduction/tu-vous, explication, sexe, prénom et âge.
 Le lot 4C ajoute sécurité, matériel, neuf questions et proposition/choix du niveau.
@@ -310,3 +350,32 @@ les vraies transitions et fonctions du profil. Ils couvrent les branches, raison
 retours, reprises, textes, refus de profil invalide, échec d'écriture, double clic et
 navigation après sauvegarde. Les tests de routes vérifient aussi l'accès réel aux
 pages d'accueil et de choix de forme après finalisation et relecture.
+
+## Corrections visuelles complémentaires du 28 octobre 2026
+
+La typographie est harmonisée uniquement dans `.onboarding-page` et ses cartes :
+hiérarchie des titres, texte courant plus foncé, libellés des réponses cohérents et
+texte secondaire discret. Les neuf questions d'évaluation sont centrées, les
+paragraphes explicatifs restent alignés à gauche. Le libellé « Avancée du
+questionnaire » précède la barre ; aucun compteur d'écrans n'est ajouté.
+`OnboardingText` garde ensemble le dernier mot et sa ponctuation française finale,
+sans modifier le texte ni insérer de saut de ligne lié à une taille d'écran.
+
+Femme et Homme utilisent le même état neutre ; seul le choix mémorisé apparaît
+bleu. Le bouton d'âge utilise l'état disabled tant que la saisie n'est pas un entier
+strictement positif et sûr ; le blocage des mineurs conserve son fonctionnement.
+
+Les nouveaux profils ont `equipmentSelectionMade: false`. Aucun matériel, y compris
+« Non, pas de matériel », n'est présélectionné. Une interaction réussie sauvegarde
+le matériel et ce marqueur à true ; Continuer nécessite un choix explicite. Ce champ
+reste optionnel pour les anciens profils : [] sans marqueur garde son sens historique
+« aucun matériel ». Un matériel non vide reste toujours reconnu comme un choix.
+
+Le choix manuel présélectionne désormais la recommandation à chaque ouverture,
+affiche immédiatement son seul descriptif et autorise la validation. Le niveau
+n'est persisté qu'à la validation. Une aide secondaire explique le changement de
+sélection. La transition supprime « si tu le permets » et son équivalent vous.
+Les réponses d'expérience sont désormais « Oui, et encore actuellement. »,
+« Oui, mais j’ai arrêté. », « Non, jamais. » ; leurs valeurs et branches restent
+current, stopped, never. Descriptions, cinq choix complémentaires, conclusion,
+barème et séances restent inchangés.

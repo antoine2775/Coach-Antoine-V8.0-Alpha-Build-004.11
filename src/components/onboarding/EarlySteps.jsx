@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { prepareEarlyStep } from "../../onboarding/earlySteps";
 import { EARLY_MESSAGES } from "../../onboarding/earlyMessages";
+import OnboardingText from "./OnboardingText";
 
 function Paragraphs({ texts }) {
-  return texts.map((text) => <p key={text}>{text}</p>);
+  return texts.map((text) => <p key={text}><OnboardingText>{text}</OnboardingText></p>);
 }
 
 function Back({ onClick }) {
@@ -35,10 +36,10 @@ function Explanation({ messages, submit, back }) {
 
 function Sex({ messages, submit, back, profile }) {
   return <>
-    <h2>{messages.sex}</h2>
+    <h2><OnboardingText>{messages.sex}</OnboardingText></h2>
     <div className="onboarding-actions">
-      <button type="button" className="primary-button" aria-pressed={profile?.sex === "female"} onClick={() => submit("sex", "female")}>Femme</button>
-      <button type="button" className="secondary-button" aria-pressed={profile?.sex === "male"} onClick={() => submit("sex", "male")}>Homme</button>
+      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "female"} onClick={() => submit("sex", "female")}>Femme</button>
+      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "male"} onClick={() => submit("sex", "male")}>Homme</button>
       <Back onClick={back} />
     </div>
   </>;
@@ -49,7 +50,7 @@ function FirstName({ messages, submit, back, profile }) {
   const [greeting, setGreeting] = useState(false);
   const [error, setError] = useState(false);
   if (greeting) return <>
-    <h2 role="status">{messages.greeting(profile.firstName)}</h2>
+    <h2 role="status"><OnboardingText>{messages.greeting(profile.firstName)}</OnboardingText></h2>
     <div className="onboarding-actions">
       <button type="button" className="primary-button" onClick={() => submit("confirmFirstName")}>Continuer</button>
       <Back onClick={() => setGreeting(false)} />
@@ -61,13 +62,13 @@ function FirstName({ messages, submit, back, profile }) {
     setError(!result.ok);
     if (result.saved) setGreeting(true);
   }}>
-    <h2>{messages.firstName}</h2>
+    <h2><OnboardingText>{messages.firstName}</OnboardingText></h2>
     <label className="field"><span>Prénom</span>
       <input name="firstName" autoComplete="given-name" type="text" required value={name}
         aria-invalid={error} aria-describedby={error ? "onboarding-name-error" : undefined}
         onChange={(event) => { setName(event.target.value); setError(false); }} />
     </label>
-    {error && <p id="onboarding-name-error" role="alert">{messages.firstNameError}</p>}
+    {error && <p id="onboarding-name-error" role="alert"><OnboardingText>{messages.firstNameError}</OnboardingText></p>}
     <div className="onboarding-actions">
       <button type="submit" className="primary-button">Continuer</button>
       <Back onClick={back} />
@@ -77,6 +78,7 @@ function FirstName({ messages, submit, back, profile }) {
 
 function Age({ messages, submit, back, profile }) {
   const [age, setAge] = useState(profile?.age?.toString() || "");
+  const validAge = /^\d+$/.test(age.trim()) && Number.isSafeInteger(Number(age)) && Number(age) > 0;
   const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState(false);
   if (blocked) return <>
@@ -92,15 +94,15 @@ function Age({ messages, submit, back, profile }) {
     setError(!result.ok);
     if (result.blocked) { setAge(""); setBlocked(true); }
   }}>
-    <h2>{messages.age}</h2>
+    <h2><OnboardingText>{messages.age}</OnboardingText></h2>
     <label className="field"><span>Âge en années</span>
       <input name="age" type="number" inputMode="numeric" min="1" step="1" required value={age}
         aria-invalid={error} aria-describedby={error ? "onboarding-age-error" : undefined}
         onChange={(event) => { setAge(event.target.value); setError(false); }} />
     </label>
-    {error && <p id="onboarding-age-error" role="alert">{messages.ageError}</p>}
+    {error && <p id="onboarding-age-error" role="alert"><OnboardingText>{messages.ageError}</OnboardingText></p>}
     <div className="onboarding-actions">
-      <button type="submit" className="primary-button">Continuer</button>
+      <button type="submit" className="primary-button" disabled={!validAge}>Continuer</button>
       <Back onClick={back} />
     </div>
   </form>;
