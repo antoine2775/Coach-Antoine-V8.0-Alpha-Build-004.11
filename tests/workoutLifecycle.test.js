@@ -1,3 +1,5 @@
+import { workoutSteps } from "../src/data.js";
+import { DISCOVERY_KEY } from "../src/utils/exerciseDiscovery.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -18,10 +20,11 @@ const code = buildSync({
 
 // Le vrai composant ET son hook sont exécutés. Les effets sont montés/nettoyés,
 // avec événements du navigateur et horloge contrôlés, sans attente réelle.
-function mount({ mode = "tu", due = false } = {}) {
+function mount({ mode = "tu", due = false, newUser = false } = {}) {
   let cells = [], index = 0, dirty = true, pending = [], tree, clock = 0, wall = Date.parse("2026-10-18T10:00:00Z"), id = 0;
   const data = new Map([["coachAntoineSound", "off"]]);
   if (due) data.set(FEEDBACK_KEY, JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: "forme", pendingReason: null, sessions: [] }));
+  if (!newUser) data.set(DISCOVERY_KEY, JSON.stringify(workoutSteps.map((step) => step.id)));
   const timers = new Map(), documentListeners = new Map(), windowListeners = new Map(), failures = new Set();
   const document = { visibilityState: "visible", addEventListener: (name, fn) => documentListeners.set(name, fn),
     removeEventListener: (name) => documentListeners.delete(name) };
@@ -95,7 +98,7 @@ function mount({ mode = "tu", due = false } = {}) {
 test("UI et vrais effets : lancement unique, récupération et 3/2/1 puis exercice suivant", () => {
   const ui = mount(); ui.click("En forme"); ui.click("Démarrer");
   assert.equal(ui.timers.size, 1);
-  ui.advance(60_000); assert.ok(ui.text().includes("RÉCUPÉRATION"));
+  ui.advance(60_000); assert.ok(ui.text().includes("Récupération"));
   ui.advance(12_000);
   for (const remaining of [3, 2, 1]) {
     const timer = ui.nodes().find((node) => node.props.className?.includes("timer--countdown"));
@@ -105,7 +108,7 @@ test("UI et vrais effets : lancement unique, récupération et 3/2/1 puis exerci
   ui.advance(1000);
   assert.ok(ui.text().includes("Marche active sur place"));
   assert.ok(ui.text().includes("Exercice 2 / 12"));
-  assert.doesNotMatch(ui.text(), /RÉCUPÉRATION/);
+  assert.doesNotMatch(ui.text(), /Récupération/);
 });
 
 for (const mode of ["tu", "vous"]) test(`UI interruption, navigation et reprise ${mode}`, () => {
@@ -131,8 +134,9 @@ test("UI cadence : seules les troisième et suivantes prévues posent la questio
     assert.equal(JSON.parse(ui.data.get(HISTORY_KEY)).length, count);
     if (count === 3) ui.click("OUI");
     const goodbye = ui.nodes().find((node) => node.props.to === "/" && node.props.className === "primary-button");
-    assert.ok(goodbye); // Destination provisoire conservée.
+    assert.ok(goodbye);
     ui.click("À BIENTÔT");
+    ui.leave(); ui.return(); // Une nouvelle visite volontaire monte une nouvelle séance.
   }
 });
 
@@ -305,3 +309,59 @@ for (const mode of ["tu", "vous"]) for (const form of ["En forme", "Petite forme
     assert.match(ui.text(), /Belle séance|Bravo/);
   });
 }
+
+test("UI nouvel utilisateur : découverte obligatoire, animation commune et revue volontaire", () => {
+  const ui = mount({ newUser: true });
+  const choices = ui.nodes().filter((node) => node.type === "button" && node.props["aria-pressed"] !== undefined);
+  assert.equal(choices.length, 3);
+  assert.ok(choices.every((node) => node.props["aria-pressed"] === false));
+  ui.click("En forme");
+  assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+  assert.ok(ui.text().includes("Commencer l’exercice"));
+  assert.ok(ui.nodes().some((node) => node.type === "svg" && node.props.className === "exercise-animation"));
+  ui.advance(10_000);
+  ui.click("Commencer l’exercice");
+  ui.advance(2000);
+  ui.click("Consigne et démo");
+  assert.ok(ui.text().includes("Reprendre l’exercice"));
+  assert.ok(!ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+  const before = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
+  ui.advance(20_000);
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, before);
+  ui.click("Reprendre l’exercice");
+  ui.advance(1000);
+  assert.ok(JSON.parse(ui.data.get(DRAFT_KEY)).remaining < before);
+});
+
+test("UI fin de séance : destination accueil et historique intact après sortie", () => {
+  const ui = mount(); ui.click("En forme"); ui.finish();
+  const exit = ui.nodes().find((node) => node.props.to === "/" && typeof node.props.onClick === "function");
+  assert.ok(exit, "lien de sortie vers l’accueil");
+  const before = ui.data.get(HISTORY_KEY);
+  assert.equal(JSON.parse(before).length, 1);
+  let prevented = false;
+  exit.props.onClick({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, false);
+  assert.equal(ui.data.has(DRAFT_KEY), false);
+  assert.equal(ui.data.get(HISTORY_KEY), before);
+});
+
+test("UI fin non enregistrée : sortie bloquée, brouillon conservé pour réessayer", () => {
+  const ui = mount(); ui.failures.add(HISTORY_KEY); ui.click("En forme"); ui.finish();
+  const exit = ui.nodes().find((node) => node.props.to === "/" && typeof node.props.onClick === "function");
+  assert.ok(exit);
+  let prevented = false;
+  exit.props.onClick({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(ui.data.has(DRAFT_KEY), true);
+});
+
+test("récupération : consigne après le chrono et avant le prochain exercice", () => {
+  const ui = mount(); ui.click("En forme"); ui.click("Démarrer"); ui.advance(60_000);
+  const content = ui.text();
+  assert.ok(content.indexOf("Récupération") < content.indexOf("Temps restant de récupération"));
+  assert.ok(content.indexOf("Temps restant de récupération") < content.indexOf("00:15"));
+  assert.ok(content.indexOf("00:15") < content.indexOf("Respire tranquillement."));
+  assert.ok(content.indexOf("Respire tranquillement.") < content.indexOf("Prochain exercice :"));
+  assert.ok(content.indexOf("Prochain exercice :") < content.indexOf("Progression globale de la séance"));
+});

@@ -7,7 +7,6 @@ const confirmation = [
 export const ASSESSMENT_MESSAGES = {
   tu: {
     safety: "Avant de commencer, je veux m’assurer que tu peux pratiquer les exercices proposés dans de bonnes conditions.",
-    safetyTransition: "De ton côté, confirme simplement ceci :",
     confirmation,
     equipment: "As-tu du matériel sportif que tu pourrais utiliser pour tes séances ?",
     introduction: [
@@ -40,7 +39,6 @@ export const ASSESSMENT_MESSAGES = {
   },
   vous: {
     safety: "Avant de commencer, je veux m’assurer que vous pouvez pratiquer les exercices proposés dans de bonnes conditions.",
-    safetyTransition: "De votre côté, confirmez simplement ceci :",
     confirmation,
     equipment: "Avez-vous du matériel sportif que vous pourriez utiliser pour vos séances ?",
     introduction: [

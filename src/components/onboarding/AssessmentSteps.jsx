@@ -13,8 +13,8 @@ function Safety({ profile, messages, submit, back }) {
   return <>
     <h2>Avant de commencer</h2>
     <p><OnboardingText>{messages.safety}</OnboardingText></p>
-    <p><OnboardingText>{messages.safetyTransition}</OnboardingText></p>
     <Paragraphs texts={messages.confirmation} />
+    <p className="onboarding-secondary">Condition d’âge : Coach Antoine est réservé aux personnes âgées de 18 ans ou plus.</p>
     <label className="onboarding-check">
       <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
       <span>J’ai lu et je confirme</span>
@@ -101,7 +101,10 @@ function Proposal({ profile, messages, submit, back }) {
   </>;
   return <div className="onboarding-proposal">
     <h2><OnboardingText>{messages.proposal(LEVEL_LABELS[proposal.proposedLevel])}</OnboardingText></h2>
-    <p><OnboardingText>{messages.levelDescriptions[proposal.proposedLevel]}</OnboardingText></p>
+    <div className="onboarding-level-summary">
+      <p className="onboarding-level-name"><strong>Niveau {LEVEL_LABELS[proposal.proposedLevel]}</strong></p>
+      <p><OnboardingText>{messages.levelDescriptions[proposal.proposedLevel]}</OnboardingText></p>
+    </div>
     <Paragraphs texts={messages.proposalDetails} />
     <p><OnboardingText>{messages.levelChange[proposal.proposedLevel]}</OnboardingText></p>
     <div className="onboarding-actions">

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import CoachAvatar from "../components/CoachAvatar";
+import ExerciseAnimation from "../components/ExerciseAnimation";
 import { workoutSteps } from "../data";
 import { getPersonalizedTexts } from "../utils/personalizedTexts";
 import { useUserProfile } from "../context/UserProfileContext";
@@ -10,7 +11,7 @@ import { FEEDBACK_OPTIONS, feedbackAnswers, isFeedbackComplete } from "../workou
 const fmt = (value) => `${Math.floor(value / 60).toString().padStart(2, "0")}:${(value % 60).toString().padStart(2, "0")}`;
 
 export default function Workout() {
-  const { profile } = useUserProfile();
+  const { profile, openSplash } = useUserProfile();
   const texts = getPersonalizedTexts(profile);
   const { state: s, act } = useWorkoutSession();
   const cur = workoutSteps[s.step];
@@ -36,7 +37,7 @@ export default function Workout() {
       {s.draftError ? <button className="secondary-button" onClick={() => act("abandon")}>NOUVELLE SÉANCE</button> :
         <div className="workout-actions workout-choices day-form-choices">
           {[["high", "Pleine forme"], ["normal", "En forme"], ["low", "Petite forme"]].map(([value, label]) =>
-            <button key={value} className="secondary-button" onClick={() => act("chooseDayForm", value, profile?.selectedLevel ?? null)}>{label}</button>)}
+            <button key={value} className="secondary-button" aria-pressed={s.dayForm === value} onClick={() => act("chooseDayForm", value, profile?.selectedLevel ?? null)}>{label}</button>)}
         </div>}
       <p className="safety-note">{texts.dayFormNote}</p>
     </section>
@@ -77,7 +78,7 @@ export default function Workout() {
       {issues}
       <div className="feedback-details">
         {s.feedbackCategories.map((category) => <fieldset key={category}>
-          <legend>{labels[category].toLocaleUpperCase("fr-FR")}</legend>
+          <legend>{category === "pauses" ? labels[category] : labels[category].toLocaleUpperCase("fr-FR")}</legend>
           {FEEDBACK_OPTIONS[category].map(([value, label]) => <label className={"feedback-selection-card feedback-detail-choice" + (s.feedbackDetails[category] === value ? " is-selected" : "")} key={value}>
             <input type="radio" name={"feedback-" + category} value={value}
               checked={s.feedbackDetails[category] === value} onChange={() => act("setFeedbackDetail", category, value)} />
@@ -111,7 +112,10 @@ export default function Workout() {
         {issues}
 
         <p className="farewell-goodbye">{texts.goodbye()}</p>
-        <Link className="primary-button" to="/" onClick={() => act("abandon")}>À BIENTÔT</Link>
+        <Link className="primary-button" to="/" replace onClick={(event) => {
+          if (act("closeFinished") === false) event.preventDefault();
+          else openSplash?.();
+        }}>À BIENTÔT</Link>
         <p className="farewell-caption">pour une prochaine séance.</p>
         <div className="farewell-coach"><CoachAvatar phase="finish" size={180} /></div>
       </section>;
@@ -130,30 +134,45 @@ export default function Workout() {
 
   const resting = s.phase === "rest";
   const target = s.dayForm === "low" ? cur.targetLow : s.dayForm === "high" ? cur.targetHigh : cur.targetNormal;
+  if (s.instructionsOpen) return <section className="workout-card exercise-discovery" aria-labelledby="exercise-discovery-title">
+    <p className="eyebrow">{s.firstDiscovery ? "PREMIÈRE DÉCOUVERTE" : "CONSIGNE ET DÉMO"}</p>
+    <h1 id="exercise-discovery-title">{cur.name}</h1>
+    <p className="exercise-instruction">{profile?.addressMode === "vous" ? cur.noteVous : cur.note}</p>
+    <ExerciseAnimation exercise={cur} />
+    <p><strong>Objectif : {target}</strong></p>
+    {warning}
+    {s.discoveryError && <p role="alert">{s.discoveryError}</p>}
+    <button className="primary-button" onClick={() => act("closeInstructions")}>
+      {s.firstDiscovery ? "Commencer l’exercice" : "Reprendre l’exercice"}
+    </button>
+    <p className="safety-note">{texts.safety}</p>
+  </section>;
   return <>
     <header className="page-header"><p className="eyebrow">SÉANCE DU JOUR</p><h1>{texts.pace}</h1></header>
     <section className="workout-card">
-      <CoachAvatar size={140} />
+      <CoachAvatar size={88} />
       {warning}
       <div className="workout-actions">
         <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : s.started ? "Reprendre" : "Démarrer"}</button>
         <button className="secondary-button" onClick={() => act("next")}>Suivant</button>
       </div>
       {resting ? <>
-        <h2 className="recovery-status">RÉCUPÉRATION</h2>
-        <h2>{texts.restMessage(s.step)}</h2>
+        <h2 className="recovery-status">Récupération</h2>
         {s.reminder && <p className="early-skip-reminder" role="status">{texts.earlySkipReminder}</p>}
         <p className="timer-label">{s.countdown ? texts.getReady : "Temps restant de récupération"}</p>
         <div className={`timer${s.countdown ? " timer--countdown" : ""}`} aria-label={s.countdown ? texts.getReady : undefined}>
           {s.countdown ? s.displayedRemaining : fmt(s.displayedRemaining)}
         </div>
+        <p className="recovery-instruction">{texts.restMessage(s.step)}</p>
         <p>Prochain exercice : <strong>{workoutSteps[s.step + 1]?.name}</strong></p>
       </> : <>
         <h2>{cur.name}</h2>
         <p className="timer-label">Temps restant de l’exercice</p>
         <div className="timer">{fmt(s.displayedRemaining)}</div>
         <p><strong>Objectif : {target}</strong></p>
-        <p>{profile?.addressMode === "vous" ? cur.noteVous : cur.note}</p>
+        <ExerciseAnimation exercise={cur} playing={s.running} />
+        <p className="exercise-instruction">{profile?.addressMode === "vous" ? cur.noteVous : cur.note}</p>
+        <button className="secondary-button instruction-button" onClick={() => act("openInstructions")}>Consigne et démo</button>
       </>}
       <p id="workout-progress-label" className="muted">Progression globale de la séance</p>
       <div className="progress-track" role="progressbar" aria-labelledby="workout-progress-label"

@@ -1,3 +1,4 @@
+import { DISCOVERY_KEY } from "../src/utils/exerciseDiscovery.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -110,6 +111,7 @@ test("douze consignes explicites en vous et données temporelles conservées", (
 function workoutUI(profile) {
   let cells = [], index = 0, tree, riffs = 0, clock = 0;
   const data = new Map([["coachAntoineSound", "off"], ["coachAntoineWorkoutFeedbackV1", JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: null, pendingReason: null, sessions: [] })]]);
+  data.set(DISCOVERY_KEY, JSON.stringify(workoutSteps.map((step) => step.id)));
   const react = { ...React,
     useContext: () => ({ profile }),
     useState(initial) { const i = index++; if (!(i in cells)) cells[i] = typeof initial === "function" ? initial() : initial;

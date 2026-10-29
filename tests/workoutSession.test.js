@@ -1,3 +1,4 @@
+import { DISCOVERY_KEY } from "../src/utils/exerciseDiscovery.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createWorkoutSession, attachWorkoutSession, DRAFT_KEY } from "../src/workout/session.js";
@@ -6,7 +7,8 @@ import { FEEDBACK_KEY, requestAdaptationCheck } from "../src/workout/feedback.js
 import { HISTORY_KEY, readHistory, getStatistics } from "../src/utils/workoutHistory.js";
 import { workoutSteps } from "../src/data.js";
 
-function setup({ data = new Map(), config = {}, steps = workoutSteps } = {}) {
+function setup({ data = new Map(), config = {}, steps = workoutSteps, newUser = false } = {}) {
+  if (!newUser && !data.has(DISCOVERY_KEY)) data.set(DISCOVERY_KEY, JSON.stringify(steps.map((step) => step.id).filter(Boolean)));
   let clock = 0, wall = Date.parse("2026-10-18T10:00:00Z"), sequence = 0;
   const failures = new Set(), sounds = [];
   const storage = {
@@ -566,4 +568,131 @@ test("absence de feedback, OUI et timeout : congé directement sans attente de r
     assert.equal(readHistory(h.storage).history.length, 1);
     assert.equal(h.data.has("coachAntoineRestDuration"), false);
   }
+});
+
+test("première découverte : présentation automatique, aucun temps compté avant confirmation", () => {
+  const h = setup({ newUser: true });
+  assert.equal(h.state().dayForm, null);
+  h.session.chooseDayForm("normal");
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().firstDiscovery, true);
+  h.session.toggle(); h.session.next(); h.advance(60_000);
+  assert.equal(h.state().step, 0);
+  assert.equal(h.state().remaining, workoutSteps[0].seconds);
+  assert.equal(h.state().activeSeconds, 0);
+  h.session.closeInstructions();
+  assert.equal(h.state().running, true);
+  assert.deepEqual(JSON.parse(h.data.get(DISCOVERY_KEY)), [workoutSteps[0].id]);
+  h.advance(1000);
+  assert.equal(h.state().activeSeconds, 1);
+});
+
+test("chaque nouvel exercice : récupération puis découverte, sans consommer son chrono", () => {
+  const h = setup({ newUser: true });
+  h.session.chooseDayForm("low"); h.session.closeInstructions();
+  h.advance(100_000);
+  assert.equal(h.state().step, 1);
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().remaining, workoutSteps[1].seconds);
+  assert.equal(h.state().activeSeconds, workoutSteps[0].seconds);
+  h.session.closeInstructions();
+  assert.equal(h.state().running, true);
+});
+
+test("découverte connue : pas de répétition automatique ; revue met en pause jusqu'à reprise volontaire", () => {
+  const h = setup(); h.start(); h.advance(4500);
+  const remaining = h.state().remaining, seconds = h.state().activeSeconds;
+  h.session.openInstructions();
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().firstDiscovery, false);
+  assert.equal(h.state().running, false);
+  h.advance(90_000); h.session.toggle(); h.session.next();
+  assert.equal(h.state().remaining, remaining);
+  assert.equal(h.state().activeSeconds, seconds);
+  h.reopen();
+  assert.equal(h.state().interrupted, true);
+  h.session.resume();
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().running, false);
+  h.session.closeInstructions(); h.advance(1000);
+  assert.equal(h.state().activeSeconds, seconds + 1);
+  h.session.abandon(); h.session.chooseDayForm("normal");
+  assert.equal(h.state().instructionsOpen, false);
+});
+
+test("nouvelle séance : exercices découverts conservés, première présentation non répétée", () => {
+  const h = setup({ newUser: true }); h.session.chooseDayForm("normal"); h.session.closeInstructions();
+  h.session.abandon(); h.session.chooseDayForm("normal");
+  assert.equal(h.state().instructionsOpen, false);
+  h.next(); h.next();
+  assert.equal(h.state().step, 1);
+  assert.equal(h.state().instructionsOpen, true);
+});
+
+test("mémoire découverte : échec de lecture ou écriture signalé sans ignorer la présentation", () => {
+  const h = setup({ newUser: true });
+  h.data.set(DISCOVERY_KEY, "{broken"); h.session.chooseDayForm("normal");
+  assert.ok(h.state().discoveryError);
+  h.session.closeInstructions();
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.data.get(DISCOVERY_KEY), "{broken");
+  h.data.delete(DISCOVERY_KEY); h.failures.add(DISCOVERY_KEY); h.session.closeInstructions();
+  assert.ok(h.state().discoveryError);
+  assert.equal(h.state().running, false);
+  h.failures.delete(DISCOVERY_KEY); h.session.closeInstructions();
+  assert.equal(h.state().running, true);
+});
+
+test("découverte stable entre séances, durées et intensités ; variante technique distincte", () => {
+  const data = new Map();
+  const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
+  let sequence = 0;
+  const open = (steps, form = "normal") => {
+    const session = createWorkoutSession({ storage, steps, uuid: () => `different-session-${++sequence}` });
+    session.chooseDayForm(form);
+    return session;
+  };
+  let session = open([{ id: "exercise-A", seconds: 60 }]);
+  assert.equal(session.getState().firstDiscovery, true);
+  session.closeInstructions(); session.abandon();
+  session = open([{ id: "exercise-A", seconds: 120 }], "high");
+  assert.equal(session.getState().instructionsOpen, false);
+  session.abandon();
+  session = open([{ id: "exercise-A", discoveryId: "exercise-A:seated-with-band", seconds: 60 }]);
+  assert.equal(session.getState().firstDiscovery, true);
+  session.closeInstructions(); session.abandon();
+  session = open([{ id: "exercise-A", discoveryId: "exercise-A:seated-with-band", seconds: 90 }], "low");
+  assert.equal(session.getState().instructionsOpen, false);
+  session.abandon();
+  session = open([{ id: "genuinely-new-exercise", seconds: 60 }]);
+  assert.equal(session.getState().firstDiscovery, true);
+  assert.deepEqual(JSON.parse(data.get(DISCOVERY_KEY)), ["exercise-A", "exercise-A:seated-with-band"]);
+});
+
+test("découverte et revue sans limite : aucune fermeture ni reprise après une heure", () => {
+  const h = setup({ newUser: true }); h.session.chooseDayForm("normal");
+  h.advance(3_600_000);
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().firstDiscovery, true);
+  assert.equal(h.state().remaining, workoutSteps[0].seconds);
+  assert.equal(h.state().activeSeconds, 0);
+  h.session.closeInstructions(); h.advance(1000); h.session.openInstructions();
+  const before = h.state().remaining;
+  h.advance(3_600_000);
+  assert.equal(h.state().instructionsOpen, true);
+  assert.equal(h.state().running, false);
+  assert.equal(h.state().remaining, before);
+  h.session.closeInstructions(); h.advance(1000);
+  assert.equal(h.state().remaining, before - 1);
+});
+
+test("sortie terminée : écran de fin conservé jusqu'au changement de route, aucun brouillon recréé au démontage", () => {
+  const h = setup(); h.session.chooseDayForm("normal"); h.finish();
+  const history = h.data.get(HISTORY_KEY);
+  assert.equal(h.session.closeFinished(), true);
+  assert.ok(h.state().finished);
+  assert.equal(h.state().dayForm, "normal");
+  h.session.interrupt(); h.session.tick();
+  assert.equal(h.data.has(DRAFT_KEY), false);
+  assert.equal(h.data.get(HISTORY_KEY), history);
 });

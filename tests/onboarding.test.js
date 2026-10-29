@@ -16,7 +16,7 @@ const require = createRequire(import.meta.url);
 
 function storageWith(profile) {
   const data = new Map(profile === undefined ? [] : [[profiles.PROFILE_KEY, JSON.stringify(profile)]]);
-  return { data, getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
+  return { data, getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
 }
 
 function completedProfile() {
@@ -366,3 +366,19 @@ for (const mode of ["tu", "vous"]) {
     assert.match(other, /<h1>Faisons connaissance\.<\/h1>/);
   });
 }
+
+test("provider : remise à zéro explicite, premier écran et absence de reprise", () => {
+  const storage = storageWith({ ...profiles.createEmptyProfile(), firstName: "Alex", onboardingCurrentStep: 4 });
+  storage.data.set("coachAntoineExerciseDiscoveryV1", '["mobilite-epaules"]');
+  const harness = providerHarness(storage);
+  harness.render();
+  let context = harness.flush();
+  assert.equal(context.onboarding.isResuming, true);
+  assert.equal(context.restartOnboarding().status, "reset");
+  context = harness.render();
+  assert.equal(context.profile, null);
+  assert.equal(context.onboarding.status, "absent");
+  assert.equal(context.onboarding.step.index, 0);
+  assert.equal(context.onboarding.isResuming, false);
+  assert.equal(storage.data.has("coachAntoineExerciseDiscoveryV1"), false);
+});

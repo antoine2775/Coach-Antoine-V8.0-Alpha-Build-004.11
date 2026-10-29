@@ -2,6 +2,8 @@ import { workoutSteps } from "../data.js";
 import { HISTORY_KEY, readHistory } from "../utils/workoutHistory.js";
 import { WORKOUT_CONFIG } from "./config.js";
 import { FEEDBACK_CATEGORIES, feedbackAnswers, isFeedbackComplete, validFeedbackChoice, recordFeedback, scheduleFeedback } from "./feedback.js";
+import { readDiscoveredExercises, discoverExercise, getExerciseDiscoveryId } from "../utils/exerciseDiscovery.js";
+import { createWorkoutId } from "../utils/workoutId.js";
 
 export const DRAFT_KEY = "coachAntoineWorkoutDraftV1";
 const FORMS = ["low", "normal", "high"];
@@ -12,7 +14,7 @@ const displayedSeconds = (value) => Math.ceil(Math.max(0, value - 1e-7));
 // Contrôleur synchrone : tous les événements utilisent la même horloge et
 // passent par les mêmes transitions. React n'est que l'affichage.
 export function createWorkoutSession({ storage, now = () => performance.now(),
-  wallNow = () => Date.now(), uuid = () => crypto.randomUUID(),
+  wallNow = () => Date.now(), uuid = createWorkoutId,
   sound = () => {}, steps = workoutSteps, config = WORKOUT_CONFIG } = {}) {
   let state = empty();
   let anchor = null;
@@ -20,6 +22,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   let saveInProgress = false;
   let draftBlocked = false;
   let lastCheckpoint = "";
+  let closed = false;
   const totalExerciseSeconds = steps.reduce((sum, step) => sum + step.seconds, 0);
 
   function restDuration() {
@@ -33,6 +36,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     return { version: 1, id: null, dayForm: null, level: null, phase: "exercise", step: 0,
       remaining: steps[0].seconds, activeSeconds: 0, restDuration: restDuration(), running: false,
       started: false, interrupted: false, earlyCount: 0, reminder: false, finished: null,
+      instructionsOpen: false, firstDiscovery: false, discoveryError: null,
       saveStatus: "pending", feedbackPlanned: false, feedbackScreen: "close", feedbackCategories: [], feedbackDetails: {},
       feedbackDeadline: null, acknowledgementDeadline: null, feedbackReply: null, feedbackError: null, draftError: null };
   }
@@ -47,6 +51,8 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       finite(value.restDuration) && value.restDuration >= config.MIN_REST && value.restDuration <= config.MAX_REST &&
       value.remaining <= (value.phase === "rest" ? value.restDuration : steps[value.step].seconds) &&
       typeof value.started === "boolean" && Number.isInteger(value.earlyCount) && value.earlyCount >= 0 &&
+      (value.instructionsOpen === undefined || typeof value.instructionsOpen === "boolean") &&
+      (value.firstDiscovery === undefined || typeof value.firstDiscovery === "boolean") &&
       typeof value.reminder === "boolean" && ["pending", "saved", "error"].includes(value.saveStatus) &&
       [...FEEDBACK_SCREENS, "acknowledgement", "close"].includes(value.feedbackScreen) &&
       (value.feedbackScreen !== "acknowledgement" || finite(value.acknowledgementDeadline)) &&
@@ -68,7 +74,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     if (raw !== null) {
       const restored = JSON.parse(raw);
       if (!validDraft(restored)) throw Error("Invalid draft");
-      state = { ...restored, running: false, interrupted: restored.phase !== "finished", draftError: null };
+      state = { ...empty(), ...restored, running: false, interrupted: restored.phase !== "finished", draftError: null };
       state.feedbackCategories = restored.feedbackCategories ?? (restored.feedbackCategory ? [restored.feedbackCategory] : []);
       state.feedbackDetails = restored.feedbackDetails ?? {};
     }
@@ -78,7 +84,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   }
 
   function persist() {
-    if (!state.id || draftBlocked) return;
+    if (!state.id || draftBlocked || closed) return;
     try {
       // Le temps hors de l'application n'est jamais rattrapé à la restauration.
       storage.setItem(DRAFT_KEY, JSON.stringify({ ...state, running: false,
@@ -156,7 +162,23 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       state.phase = "exercise";
       state.remaining = steps[state.step].seconds;
       state.reminder = false;
+      presentNewExercise();
     }
+  }
+  function presentNewExercise() {
+    // Les étapes sans identifiant n'existent que dans certains contrôles techniques.
+    const id = getExerciseDiscoveryId(steps[state.step]);
+    if (!id || state.phase !== "exercise" || state.finished) return;
+    try {
+      if (readDiscoveredExercises(storage).includes(id)) return;
+      state.discoveryError = null;
+    } catch {
+      state.discoveryError = "La découverte de cet exercice n’a pas pu être lue. Réessayez avant de commencer.";
+    }
+    state.instructionsOpen = true;
+    state.firstDiscovery = true;
+    state.running = false;
+    anchor = null;
   }
   function settle() {
     if (!state.running || anchor === null || state.finished) return false;
@@ -193,17 +215,18 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     chooseDayForm(choice, level = null) {
       if (state.id || draftBlocked || !FORMS.includes(choice)) return;
       state.id = uuid(); state.dayForm = choice; state.level = level;
+      presentNewExercise();
       try { storage.setItem("coachAntoineDayForm", choice); } catch { /* brouillon signale l'erreur */ }
       checkpoint(true);
     },
     toggle() {
-      if (!state.id || state.finished || state.interrupted) return;
+      if (!state.id || state.finished || state.interrupted || state.instructionsOpen) return;
       if (state.running) { settle(); state.running = false; anchor = null; }
       else { state.running = true; state.started = true; anchor = now(); }
       checkpoint(true);
     },
     next() {
-      if (!state.id || state.finished || state.interrupted) return;
+      if (!state.id || state.finished || state.interrupted || state.instructionsOpen) return;
       const changed = settle();
       if (changed || now() - lastNext < config.NEXT_GUARD_MS || state.finished) { checkpoint(); return; }
       lastNext = now();
@@ -211,6 +234,28 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       checkpoint(true);
     },
     tick() { settle(); timeoutFeedback(); checkpoint(); },
+    openInstructions() {
+      if (!state.id || state.finished || state.interrupted || state.phase !== "exercise") return;
+      settle();
+      if (state.phase !== "exercise" || state.finished) { checkpoint(true); return; }
+      state.running = false; anchor = null;
+      state.instructionsOpen = true;
+      checkpoint(true);
+    },
+    closeInstructions() {
+      if (!state.instructionsOpen || state.interrupted || state.finished) return;
+      try {
+        const id = getExerciseDiscoveryId(steps[state.step]);
+        if (id) discoverExercise(storage, id);
+        state.discoveryError = null;
+      } catch {
+        state.discoveryError = "La découverte de cet exercice n’a pas pu être enregistrée. Réessayez avant de commencer.";
+        checkpoint(true); return;
+      }
+      state.instructionsOpen = false; state.firstDiscovery = false;
+      state.running = true; state.started = true; anchor = now();
+      checkpoint(true);
+    },
     interrupt() {
       if (!state.id || state.finished) { timeoutFeedback(); checkpoint(true); return; }
       settle();
@@ -220,16 +265,26 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     resume() {
       if (!state.interrupted || state.finished) return;
       state.interrupted = false;
-      state.running = state.started;
+      presentNewExercise();
+      state.running = state.started && !state.instructionsOpen;
       anchor = state.running ? now() : null;
       checkpoint(true);
+    },
+    closeFinished() {
+      // Conserver l'écran de fin pendant la transition de route, sans préparer
+      // une nouvelle séance ni recréer le brouillon au nettoyage du hook.
+      if (!state.finished || state.saveStatus !== "saved") return false;
+      try { storage.removeItem(DRAFT_KEY); }
+      catch { state.draftError = "Impossible de fermer la séance. Réessayez."; return false; }
+      closed = true;
+      return true;
     },
     abandon() {
       // Ne jamais perdre une séance terminée en attente d'enregistrement.
       if (state.finished && state.saveStatus !== "saved") return false;
       try { storage.removeItem(DRAFT_KEY); }
       catch { state.draftError = "Impossible d’effacer la sauvegarde temporaire. Réessayez."; return false; }
-      state = empty(); draftBlocked = false; anchor = null; lastNext = -Infinity; lastCheckpoint = "";
+      state = empty(); draftBlocked = false; closed = false; anchor = null; lastNext = -Infinity; lastCheckpoint = "";
       return true;
     },
     save,

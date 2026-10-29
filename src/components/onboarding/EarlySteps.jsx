@@ -38,8 +38,8 @@ function Sex({ messages, submit, back, profile }) {
   return <>
     <h2><OnboardingText>{messages.sex}</OnboardingText></h2>
     <div className="onboarding-actions">
-      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "female"} onClick={() => submit("sex", "female")}>Femme</button>
-      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "male"} onClick={() => submit("sex", "male")}>Homme</button>
+      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "female"} onClick={() => submit("sex", "female")}>Une femme</button>
+      <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "male"} onClick={() => submit("sex", "male")}>Un homme</button>
       <Back onClick={back} />
     </div>
   </>;
@@ -76,7 +76,7 @@ function FirstName({ messages, submit, back, profile }) {
   </form>;
 }
 
-function Age({ messages, submit, back, profile }) {
+function Age({ messages, submit, back, profile, restartOnboarding }) {
   const [age, setAge] = useState(profile?.age?.toString() || "");
   const validAge = /^\d+$/.test(age.trim()) && Number.isSafeInteger(Number(age)) && Number(age) > 0;
   const [blocked, setBlocked] = useState(false);
@@ -84,6 +84,7 @@ function Age({ messages, submit, back, profile }) {
   if (blocked) return <>
     <div role="alert"><Paragraphs texts={messages.underage} /></div>
     <div className="onboarding-actions">
+      <button type="button" className="primary-button" onClick={restartOnboarding}>Recommencer pour une autre personne</button>
       <button type="button" className="secondary-button" onClick={() => { setAge(""); setBlocked(false); }}>Corriger l’âge</button>
       <Back onClick={back} />
     </div>
@@ -112,7 +113,7 @@ const screens = { introduction: Introduction, "getting-to-know": Explanation, se
 export const EARLY_STEP_IDS = Object.freeze(Object.keys(screens));
 
 export default function EarlySteps({ step }) {
-  const { profile, updateUserProfile } = useUserProfile();
+  const { profile, updateUserProfile, restartOnboarding } = useUserProfile();
   const messages = EARLY_MESSAGES[profile?.addressMode === "vous" ? "vous" : "tu"];
   const submit = (action, value) => {
     const result = prepareEarlyStep(action, value);
@@ -121,5 +122,5 @@ export default function EarlySteps({ step }) {
     return { ...result, saved: saved.status === "saved" };
   };
   const Screen = screens[step.id];
-  return <Screen messages={messages} profile={profile} submit={submit} back={() => submit("back", step.index)} />;
+  return <Screen messages={messages} profile={profile} submit={submit} restartOnboarding={restartOnboarding} back={() => submit("back", step.index)} />;
 }

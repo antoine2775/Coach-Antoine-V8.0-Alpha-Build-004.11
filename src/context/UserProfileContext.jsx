@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { readProfile, updateProfile } from "../utils/userProfile";
 import { getOnboardingState } from "../onboarding/onboardingState";
+import { resetOnboardingProfile } from "../utils/profileReset.js";
 
 export const UserProfileContext = createContext(null);
 
@@ -10,6 +11,7 @@ export function UserProfileProvider({ children, storage }) {
   // Fixé à la première lecture exploitable ; ni sauvegarde ni relecture ne
   // transforme un parcours commencé pendant cette utilisation en reprise.
   const resumedOnLoad = useRef(null);
+  const [completionDestination, setCompletionDestination] = useState(null);
 
   const reloadProfile = useCallback(() => {
     const loaded = readProfile(storage);
@@ -22,9 +24,12 @@ export function UserProfileProvider({ children, storage }) {
 
   useEffect(() => { reloadProfile(); }, [reloadProfile]);
 
-  const updateUserProfile = useCallback((changes) => {
+  const updateUserProfile = useCallback((changes, destination) => {
     const saved = updateProfile(changes, storage);
     if (saved.status === "saved") {
+      if (changes.onboardingCompleted === true && ["/", "/seances"].includes(destination)) {
+        setCompletionDestination(destination);
+      }
       setResult({ status: "valid", profile: saved.profile });
       setSaveError(null);
     } else {
@@ -36,6 +41,19 @@ export function UserProfileProvider({ children, storage }) {
     return saved;
   }, [storage]);
 
+  const restartOnboarding = useCallback(() => {
+    const reset = resetOnboardingProfile(storage);
+    if (reset.status === "reset") {
+      resumedOnLoad.current = false;
+      setCompletionDestination(null);
+      setResult({ status: "absent", profile: null });
+      setSaveError(null);
+    } else setSaveError(reset.status);
+    return reset;
+  }, [storage]);
+
+  const clearCompletionDestination = useCallback(() => setCompletionDestination(null), []);
+
   return <UserProfileContext.Provider value={{
     profile: result.profile,
     profileStatus: result.status,
@@ -43,6 +61,9 @@ export function UserProfileProvider({ children, storage }) {
     saveError,
     reloadProfile,
     updateUserProfile,
+    restartOnboarding,
+    completionDestination,
+    clearCompletionDestination,
   }}>{children}</UserProfileContext.Provider>;
 }
 

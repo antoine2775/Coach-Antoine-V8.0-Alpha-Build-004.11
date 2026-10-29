@@ -1,3 +1,4 @@
+import { resetOnboardingProfile } from "../src/utils/profileReset.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -18,7 +19,7 @@ function setup(initial) {
   const data = new Map(initial ? [[PROFILE_KEY, JSON.stringify(initial)]] : []);
   let tree, cells = new Map(), active, index, lastStep, lastResult;
   const attempts = [];
-  const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
+  const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
   let profile = initial || null;
   const react = {
     createElement(type, props, ...children) { return { type, props: { ...props, children } }; },
@@ -30,7 +31,11 @@ function setup(initial) {
       return [bucket[i], (next) => { bucket[i] = typeof next === "function" ? next(bucket[i]) : next; }];
     },
   };
-  const context = { useUserProfile: () => ({ profile, updateUserProfile(changes) {
+  const context = { useUserProfile: () => ({ profile, restartOnboarding() {
+    const result = resetOnboardingProfile(storage);
+    if (result.status === "reset") profile = null;
+    return result;
+  }, updateUserProfile(changes) {
     attempts.push(changes);
     lastResult = updateProfile(changes, storage);
     if (lastResult.status === "saved") profile = lastResult.profile;
@@ -122,7 +127,7 @@ for (const [label, mode] of [["Oui, on se tutoie", "tu"], ["Je préfère qu’on
   });
 }
 
-for (const [label, sex] of [["Femme", "female"], ["Homme", "male"]]) {
+for (const [label, sex] of [["Une femme", "female"], ["Un homme", "male"]]) {
   test(`${label} avant le prénom : sauvegarde explicite sans changement de niveau`, () => {
     const ui = setup({ ...createEmptyProfile(), addressMode: "vous", onboardingCurrentStep: 2 });
     assert.ok(ui.text().includes("Vous êtes :"));
@@ -206,7 +211,7 @@ test("Retour conserve les données et permet de modifier une réponse antérieur
   assert.equal(ui.profile().age, 40);
   ui.click("Retour");
   assert.equal(ui.profile().onboardingCurrentStep, 2);
-  ui.click("Homme");
+  ui.click("Un homme");
   assert.equal(ui.profile().sex, "male");
   ui.input("firstName", "  Robin "); ui.submit();
   assert.equal(ui.profile().firstName, "Robin");
@@ -219,7 +224,7 @@ test("rechargement à chaque première étape : données enregistrées conservé
   ui.click("Je préfère qu’on se vouvoie");
   ui = setup(ui.profile());
   assert.ok(ui.text().includes(EARLY_MESSAGES.vous.explanation[0]));
-  ui.click("Continuer"); ui.click("Femme");
+  ui.click("Continuer"); ui.click("Une femme");
   ui.input("firstName", "  Sarah "); ui.submit();
   ui = setup(ui.profile());
   assert.equal(ui.profile().firstName, "Sarah");
@@ -255,7 +260,7 @@ test("une seule clé de profil : anciennes clés inchangées", () => {
   const oldKeys = ["coachAntoineSound", "coachAntoineRestDuration", "coachAntoineDayForm",
     "coachAntoineHistory", "coachAntoineWeight", "coachAntoineBrainV1"];
   oldKeys.forEach((key) => ui.data.set(key, "unchanged"));
-  ui.click("Oui, on se tutoie"); ui.click("Continuer"); ui.click("Femme");
+  ui.click("Oui, on se tutoie"); ui.click("Continuer"); ui.click("Une femme");
   ui.input("firstName", "Alex"); ui.submit(); ui.click("Continuer"); ui.input("age", "18"); ui.submit();
   oldKeys.forEach((key) => assert.equal(ui.data.get(key), "unchanged"));
   assert.deepEqual([...ui.data.keys()].sort(), [...oldKeys, PROFILE_KEY].sort());
@@ -274,14 +279,14 @@ test("transitions pures : pas de nouvelle étape construite au-delà de sécurit
 
 test("nouveau profil : choix Femme/Homme neutres et réponse enregistrée au retour", () => {
   const ui = setup({ ...createEmptyProfile(), onboardingCurrentStep: 2 });
-  for (const label of ["Femme", "Homme"]) {
+  for (const label of ["Une femme", "Un homme"]) {
     assert.equal(ui.pressed(label), false);
     assert.ok(ui.button(label).props.className.includes("secondary-button"));
     assert.ok(!ui.button(label).props.className.includes("primary-button"));
   }
-  ui.click("Femme"); ui.click("Retour");
-  assert.equal(ui.pressed("Femme"), true);
-  assert.equal(ui.pressed("Homme"), false);
+  ui.click("Une femme"); ui.click("Retour");
+  assert.equal(ui.pressed("Une femme"), true);
+  assert.equal(ui.pressed("Un homme"), false);
 });
 
 test("âge : Continuer désactivé avant saisie et pour toute valeur invalide", () => {
@@ -297,3 +302,22 @@ test("âge : Continuer désactivé avant saisie et pour toute valeur invalide", 
   ui.input("age", "");
   assert.equal(ui.button("Continuer").props.disabled, true);
 });
+
+for (const mode of ["tu", "vous"]) {
+  test(`mineur ${mode} : écran bloquant et redémarrage entièrement vierge`, () => {
+    const ui = setup(atAge(mode));
+    ui.input("age", "17"); ui.submit();
+    assert.ok(ui.text().includes("Coach Antoine est réservé aux personnes âgées de 18 ans ou plus."));
+    assert.ok(!ui.buttons().includes("Continuer"));
+    assert.ok(ui.buttons().includes("Recommencer pour une autre personne"));
+    ui.click("Recommencer pour une autre personne");
+    assert.equal(ui.profile(), null);
+    assert.ok(ui.text().includes("Bonjour, moi c’est Coach Antoine."));
+    assert.equal(ui.data.has(PROFILE_KEY), false);
+    ui.click("Oui, on se tutoie");
+    assert.equal(ui.profile().firstName, "");
+    assert.equal(ui.profile().sex, null);
+    assert.equal(ui.profile().age, null);
+    assert.deepEqual(ui.profile().assessmentAnswers, Array(9).fill(null));
+  });
+}

@@ -7,7 +7,7 @@ import OnboardingText from "./OnboardingText";
 import { EXPERIENCE_OPTIONS, STOP_REASON_OPTIONS, CURRENT_PROGRAM_MISSING_OPTIONS, getCompletionStage, canCompleteOnboarding, prepareCompletionStep } from "../../onboarding/completionSteps";
 
 export default function CompletionSteps({ step }) {
-  const { profile, updateUserProfile } = useUserProfile();
+  const { profile, updateUserProfile, openSplash } = useUserProfile();
   const navigate = useNavigate();
   const finishing = useRef(false);
   const [error, setError] = useState(false);
@@ -19,9 +19,10 @@ export default function CompletionSteps({ step }) {
     const result = prepareCompletionStep(profile, action, value);
     if (!result.ok) { setError(true); return; }
     if (action === "finish") finishing.current = true;
-    const saved = updateUserProfile(result.changes);
+    const saved = updateUserProfile(result.changes, result.destination);
     if (saved.status !== "saved") { finishing.current = false; setError(true); return; }
     setError(false);
+    if (action === "finish" && value === "later") openSplash?.();
     if (result.destination) navigate(result.destination, { replace: true });
   };
   const back = <button type="button" className="secondary-button" onClick={() => submit("back")}>Retour</button>;

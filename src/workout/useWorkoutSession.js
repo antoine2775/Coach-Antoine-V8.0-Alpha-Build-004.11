@@ -19,8 +19,9 @@ export function useWorkoutSession() {
   }, () => refresh((value) => value + 1)), [session]);
 
   const act = (action, ...args) => {
-    session[action](...args);
+    const result = session[action](...args);
     refresh((value) => value + 1);
+    return result;
   };
   return { state: session.getState(), act };
 }

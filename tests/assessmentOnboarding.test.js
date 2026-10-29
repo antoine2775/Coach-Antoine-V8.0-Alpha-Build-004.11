@@ -224,7 +224,7 @@ for (const [mode, transition] of [["tu", "De ton côté, confirme simplement cec
     const ui = setup(draft(5, mode));
     const content = (node) => typeof node === "object" && node !== null ? node.props.children.map(content).join("") : String(node ?? "");
     const paragraphs = ui.nodes().filter((node) => node.type === "p").map(content);
-    assert.deepEqual(paragraphs, [ASSESSMENT_MESSAGES[mode].safety, transition, ...ASSESSMENT_MESSAGES[mode].confirmation]);
+    assert.deepEqual(paragraphs, [ASSESSMENT_MESSAGES[mode].safety, ...ASSESSMENT_MESSAGES[mode].confirmation, "Condition d’âge : Coach Antoine est réservé aux personnes âgées de 18 ans ou plus."]);
     assert.ok(ui.text().includes("J’ai lu et je confirme"));
   });
 }
@@ -469,5 +469,17 @@ for (const [answer, level] of [["c", "reprise"], ["b", "forme"], ["a", "tonique"
     ui.click("Valider mon choix");
     assert.equal(ui.profile().selectedLevel, level);
     assert.equal(ui.profile().levelOrigin, "manual");
+  });
+}
+
+for (const [answer, label] of [["c", "Reprise"], ["b", "Équilibré"], ["a", "Tonique"]]) {
+  test(`niveau ${label} : descriptif isolé dans l’encadré dynamique`, () => {
+    const ui = setup(proposal(Array(9).fill(answer)));
+    const summary = ui.nodes().find((node) => node.props.className === "onboarding-level-summary");
+    assert.ok(summary);
+    const content = (node) => typeof node === "object" && node !== null ? node.props.children.map(content).join("") : String(node ?? "");
+    assert.ok(content(summary).includes(`Niveau ${label}`));
+    assert.ok(content(summary).includes(ASSESSMENT_MESSAGES.tu.levelDescriptions[ui.profile().proposedLevel]));
+    assert.ok(!content(summary).includes(ASSESSMENT_MESSAGES.tu.proposalDetails[0]));
   });
 }
