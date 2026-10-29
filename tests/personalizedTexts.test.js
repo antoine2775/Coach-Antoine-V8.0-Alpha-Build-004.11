@@ -21,7 +21,7 @@ const profileFor = (addressMode = "tu", sex = "male", firstName = "Éloïse") =>
 const uiCode = buildSync({
   stdin: { contents: 'export { default as Home } from "./src/pages/Home.jsx"; export { default as Workout } from "./src/pages/Workout.jsx"; export { default as Progress } from "./src/pages/Progress.jsx"; export { default as Carnet } from "./src/pages/Carnet.jsx"; export { default as ProfileSettings } from "./src/components/ProfileSettings.jsx"; export { UserProfileContext } from "./src/context/UserProfileContext.jsx";', resolveDir: process.cwd() },
   bundle: true, write: false, platform: "node", format: "cjs", external: ["react", "react-router-dom"],
-  define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
+  define: { "import.meta.env.DEV": "false", "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
 }).outputFiles[0].text;
 
 function renderPage(page, profile) {
@@ -44,7 +44,8 @@ for (const addressMode of ["tu", "vous"]) for (const sex of ["male", "female"]) 
     for (const text of [texts.dayFormQuestion, texts.dayFormExplanation, texts.dayFormNote, "Petite forme", "En forme", "Pleine forme"]) assert.ok(workout.includes(text));
     const progress = renderPage("Progress", profile);
     assert.ok(progress.includes(texts.journey));
-    assert.ok(progress.includes(texts.emptyHistory));
+    assert.ok(!progress.includes(texts.emptyHistory));
+    assert.ok(!progress.includes("Historique récent"));
     const carnet = renderPage("Carnet", profile);
     assert.ok(carnet.includes(texts.zzTop));
     assert.ok(carnet.includes(texts.understand));

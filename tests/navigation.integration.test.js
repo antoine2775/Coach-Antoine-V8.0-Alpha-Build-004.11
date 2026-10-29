@@ -15,7 +15,7 @@ const require = createRequire(import.meta.url);
 const base = "/Coach-Antoine-V8.0-Alpha-Build-004.11";
 const code = buildSync({ stdin: { contents: 'export { AppShell } from "./src/App.jsx"; export { UserProfileProvider } from "./src/context/UserProfileContext.jsx";', resolveDir: process.cwd() },
   bundle: true, write: false, platform: "node", format: "cjs", external: ["react", "react-router-dom"],
-  define: { "import.meta.env.BASE_URL": JSON.stringify(base + "/") },
+  define: { "import.meta.env.DEV": "false", "import.meta.env.BASE_URL": JSON.stringify(base + "/") },
 }).outputFiles[0].text;
 
 async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
@@ -29,7 +29,11 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
   storage.setItem("coachAntoineSound", "off");
   if (oldDraft) {
     const old = createWorkoutSession({ storage, uuid: () => "previous-session" });
-    old.chooseDayForm("low");
+    old.chooseDayForm("low", "forme");
+    // Ancien brouillon sans niveau : fixture de compatibilité, pas nouvelle création.
+    const legacyDraft = JSON.parse(storage.getItem(DRAFT_KEY));
+    legacyDraft.level = null;
+    storage.setItem(DRAFT_KEY, JSON.stringify(legacyDraft));
   }
   const initialDraft = storage.getItem(DRAFT_KEY);
   const module = { exports: {} };
@@ -160,3 +164,40 @@ for (const [label, value] of [["Petite forme", "low"], ["En forme", "normal"], [
     } finally { await ui.close(); }
   });
 }
+
+test("Réglages : Retour retrouve Progression et conserve la modification immédiatement enregistrée", async () => {
+  const ui = await setup();
+  try {
+    await ui.onboarding("tu", "Pas maintenant"); await ui.leaveSplash();
+    await ui.click("Progression");
+    await ui.click("Le Coach");
+    assert.equal(ui.dom.window.location.pathname, base + "/coach");
+    const returns = [...document.querySelectorAll("button")].filter((node) => node.textContent === "← Retour");
+    assert.equal(returns.length, 1);
+    assert.ok(returns[0].closest(".settings-heading"));
+    await ui.click("Équilibré");
+    assert.equal(JSON.parse(ui.storage.getItem(PROFILE_KEY)).selectedLevel, "forme");
+    const returned = new Promise((resolve) => ui.dom.window.addEventListener("popstate", resolve, { once: true }));
+    await act(async () => { await ui.click("← Retour"); await returned; });
+    assert.equal(ui.dom.window.location.pathname, base + "/progression");
+    assert.equal(document.querySelector("h1").textContent, "Progression");
+    assert.equal(JSON.parse(ui.storage.getItem(PROFILE_KEY)).selectedLevel, "forme");
+    assert.ok(!ui.text().includes("Enregistrer"));
+  } finally { await ui.close(); }
+});
+
+test("Réglages : ouverture directe sans historique interne, Retour rejoint l’accueil", async () => {
+  const ui = await setup();
+  try {
+    await ui.onboarding("vous", "Pas maintenant"); await ui.leaveSplash();
+    // Simule l'entrée initiale de BrowserRouter sur /coach (index interne zéro).
+    await act(async () => {
+      ui.dom.window.history.replaceState({ idx: 0 }, "", base + "/coach");
+      ui.dom.window.dispatchEvent(new ui.dom.window.PopStateEvent("popstate"));
+    });
+    assert.equal(ui.dom.window.location.pathname, base + "/coach");
+    await ui.click("← Retour");
+    ui.assertHome();
+    assert.equal(JSON.parse(ui.storage.getItem(PROFILE_KEY)).onboardingCompleted, true);
+  } finally { await ui.close(); }
+});

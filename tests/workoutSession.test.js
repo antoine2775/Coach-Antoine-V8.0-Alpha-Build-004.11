@@ -98,7 +98,7 @@ for (const [elapsed, expected] of [[49_000, 1], [49_500, 1], [50_000, 0], [55_00
 }
 
 test("trois exercices anticipés, aucun rappel au quatrième/cinquième, réarmement après fin normale", () => {
-  const h = setup(); h.session.chooseDayForm("normal");
+  const h = setup(); h.session.chooseDayForm("normal", "forme");
   for (let count = 1; count <= 5; count++) {
     h.next();
     assert.equal(h.state().earlyCount, count);
@@ -116,7 +116,7 @@ test("trois exercices anticipés, aucun rappel au quatrième/cinquième, réarme
 
 test("sortie à 10 secondes réinitialise une série ; paramètres du rappel modifiables", () => {
   const h = setup({ config: { EARLY_SKIP_REMAINING_SECONDS: 20, EARLY_SKIP_CONSECUTIVE_COUNT: 2 } });
-  h.session.chooseDayForm("normal");
+  h.session.chooseDayForm("normal", "forme");
   h.next(); h.next(); h.next();
   assert.equal(h.state().reminder, true);
   h.next(); h.session.toggle(); h.advance(65_000);
@@ -168,7 +168,7 @@ test("nouvelle séance après interruption : brouillon supprimé, aucun historiq
   const h = setup(); h.start(); h.advance(5000); h.session.interrupt(); h.session.abandon();
   assert.equal(h.data.has(DRAFT_KEY), false); assert.equal(h.data.has(HISTORY_KEY), false);
   assert.equal(h.data.has(FEEDBACK_KEY), false); assert.equal(h.state().dayForm, null);
-  h.session.chooseDayForm("low"); assert.equal(h.state().id, "session-2");
+  h.session.chooseDayForm("low", "forme"); assert.equal(h.state().id, "session-2");
 });
 
 function environment() {
@@ -247,7 +247,7 @@ test("aucune règle inventée sur les tendances de forme du jour", () => {
 
 test("OUI : réponse liée à l'id, aucun autre écran, aucun réglage modifié", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("yes");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("yes");
   assert.equal(h.state().feedbackScreen, "close");
   const entry = JSON.parse(h.data.get(FEEDBACK_KEY)).sessions[0];
   assert.equal(entry.id, h.state().id); assert.equal(entry.response.adapted, true);
@@ -260,7 +260,7 @@ for (const [category, value, expected] of [["pauses", "short", 20], ["pauses", "
   test(`NON → ${category} → ${value} : réponse conservée, seul réglage autorisé`, () => {
     const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
     h.data.set("coachAntoineProfile", "inchangé");
-    h.session.chooseDayForm("normal"); h.finish();
+    h.session.chooseDayForm("normal", "forme"); h.finish();
     const history = h.data.get(HISTORY_KEY);
     h.session.answer("no"); assert.equal(h.state().feedbackScreen, "category");
     h.session.toggleFeedbackCategory(category); h.session.continueFeedback(); assert.equal(h.state().feedbackScreen, "detail");
@@ -277,7 +277,7 @@ for (const [initial, value, expected] of [[30, "short", 30], [10, "long", 10]]) 
   test(`bornes existantes des récupérations : ${initial}/${value}`, () => {
     const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
     h.data.set("coachAntoineRestDuration", String(initial)); h.fresh();
-    h.session.chooseDayForm("normal"); h.finish();
+    h.session.chooseDayForm("normal", "forme"); h.finish();
     h.session.answer("no"); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback(); h.session.setFeedbackDetail("pauses", value); h.session.submitFeedback();
     assert.equal(h.state().restDuration, expected);
   });
@@ -285,7 +285,7 @@ for (const [initial, value, expected] of [[30, "short", 30], [10, "long", 10]]) 
 
 for (const screen of ["general", "category", "detail"]) test(`timeout indépendant de 5 min sur ${screen} : aucun choix ni réglage implicite`, () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish();
+  h.session.chooseDayForm("normal", "forme"); h.finish();
   h.advance(299_000);
   if (screen !== "general") h.session.answer("no");
   if (screen === "detail") { h.advance(299_000); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback(); }
@@ -302,7 +302,7 @@ for (const screen of ["general", "category", "detail"]) test(`timeout indépenda
 
 test("réponse exactement à l'expiration ignorée ; fermeture au feedback conserve la séance terminée", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1, END_FEEDBACK_TIMEOUT: 1000 } });
-  h.session.chooseDayForm("normal"); h.finish();
+  h.session.chooseDayForm("normal", "forme"); h.finish();
   h.advance(1000, false); h.session.answer("yes");
   assert.equal(h.state().feedbackScreen, "close");
   assert.equal(JSON.parse(h.data.get(FEEDBACK_KEY)).sessions[0].response, null);
@@ -312,7 +312,7 @@ test("réponse exactement à l'expiration ignorée ; fermeture au feedback conse
 
 test("réouverture pendant feedback : délai initial conservé et timeout hors application", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   const deadline = h.state().feedbackDeadline;
   h.advance(100_000, false); h.reopen();
   assert.equal(h.state().feedbackScreen, "category"); assert.equal(h.state().feedbackDeadline, deadline);
@@ -335,15 +335,15 @@ test("retry après quota : outbox restaurée, même id, même durée, aucun son 
 test("ancien historique compatible et historique corrompu jamais écrasé", () => {
   const h = setup();
   const old = { label: "Ancienne séance", date: "2025-01-01T00:00:00Z" };
-  h.data.set(HISTORY_KEY, JSON.stringify([old])); h.session.chooseDayForm("normal"); h.finish();
+  h.data.set(HISTORY_KEY, JSON.stringify([old])); h.session.chooseDayForm("normal", "forme"); h.finish();
   assert.deepEqual(readHistory(h.storage).history[1], old);
-  h.fresh(); h.data.set(HISTORY_KEY, "{broken"); h.session.chooseDayForm("normal"); h.finish();
+  h.fresh(); h.data.set(HISTORY_KEY, "{broken"); h.session.chooseDayForm("normal", "forme"); h.finish();
   assert.equal(h.state().saveStatus, "error"); assert.equal(h.data.get(HISTORY_KEY), "{broken");
 });
 
 test("échec de suivi/feedback : retry sans perdre la séance ni changer le réglage prématurément", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.failures.add(FEEDBACK_KEY); h.session.chooseDayForm("normal"); h.finish();
+  h.failures.add(FEEDBACK_KEY); h.session.chooseDayForm("normal", "forme"); h.finish();
   assert.equal(h.state().saveStatus, "saved"); assert.ok(h.state().feedbackError);
   h.failures.delete(FEEDBACK_KEY); h.session.save();
   assert.equal(h.state().feedbackScreen, "general");
@@ -356,7 +356,7 @@ test("échec de suivi/feedback : retry sans perdre la séance ni changer le rég
 
 test("retry d'un ajustement de pause ne l'applique pas deux fois", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no"); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback();
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no"); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback();
   h.failures.add("coachAntoineRestDuration"); h.session.setFeedbackDetail("pauses", "short"); h.session.submitFeedback();
   assert.equal(h.state().feedbackScreen, "detail");
   h.failures.delete("coachAntoineRestDuration"); h.session.setFeedbackDetail("pauses", "short"); h.session.submitFeedback(); h.session.setFeedbackDetail("pauses", "short"); h.session.submitFeedback();
@@ -365,14 +365,14 @@ test("retry d'un ajustement de pause ne l'applique pas deux fois", () => {
 
 test("brouillon invalide conservé jusqu'à abandon explicite", () => {
   const h = setup({ data: new Map([[DRAFT_KEY, "{broken"]]) });
-  assert.ok(h.state().draftError); h.session.chooseDayForm("normal");
+  assert.ok(h.state().draftError); h.session.chooseDayForm("normal", "forme");
   assert.equal(h.data.get(DRAFT_KEY), "{broken"); assert.equal(h.state().id, null);
-  h.session.abandon(); h.session.chooseDayForm("normal"); assert.ok(h.state().id);
+  h.session.abandon(); h.session.chooseDayForm("normal", "forme"); assert.ok(h.state().id);
 });
 
 test("réouverture après réponse enregistrée mais réglage non écrit : application unique de la réponse explicite", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no"); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback();
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no"); h.session.toggleFeedbackCategory("pauses"); h.session.continueFeedback();
   h.failures.add("coachAntoineRestDuration"); h.session.setFeedbackDetail("pauses", "short"); h.session.submitFeedback();
   assert.equal(h.state().feedbackScreen, "detail");
   h.failures.delete("coachAntoineRestDuration"); h.reopen();
@@ -383,7 +383,7 @@ test("réouverture après réponse enregistrée mais réglage non écrit : appli
 
 test("brouillon temporairement non inscriptible : avis durable réconcilié après réouverture", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish();
+  h.session.chooseDayForm("normal", "forme"); h.finish();
   h.failures.add(DRAFT_KEY); h.session.answer("yes");
   assert.ok(h.state().draftError); assert.equal(h.state().feedbackScreen, "close");
   h.failures.delete(DRAFT_KEY); h.reopen();
@@ -392,26 +392,26 @@ test("brouillon temporairement non inscriptible : avis durable réconcilié apr�
 
 test("son désactivé et erreurs audio : aucune influence sur la finalisation", () => {
   const h = setup(); h.data.set("coachAntoineSound", "off");
-  h.session.chooseDayForm("normal"); h.finish(); h.session.save();
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.save();
   assert.deepEqual(h.sounds, []); assert.equal(readHistory(h.storage).history.length, 1);
   const data = new Map();
   const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
   const session = createWorkoutSession({ storage, steps: [{ seconds: 1 }], uuid: () => "audio-failure",
     sound: () => { throw Error("audio"); } });
-  session.chooseDayForm("normal"); session.next();
+  session.chooseDayForm("normal", "forme"); session.next();
   assert.equal(session.getState().saveStatus, "saved"); assert.equal(readHistory(storage).history.length, 1);
 });
 
 test("troisième sortie anticipée au dernier exercice : rappel disponible à la clôture", () => {
   const h = setup({ steps: [{ seconds: 60 }, { seconds: 60 }, { seconds: 60 }] });
-  h.session.chooseDayForm("normal"); h.finish();
+  h.session.chooseDayForm("normal", "forme"); h.finish();
   assert.equal(h.state().earlyCount, 3); assert.equal(h.state().reminder, true);
   assert.equal(h.state().phase, "finished");
 });
 
 test("métadonnées feedback corrompues : historique protégé, réglages inchangés et erreur accessible", () => {
   const h = setup(); h.data.set(FEEDBACK_KEY, "{broken");
-  h.session.chooseDayForm("normal"); h.finish();
+  h.session.chooseDayForm("normal", "forme"); h.finish();
   assert.equal(h.state().saveStatus, "saved"); assert.ok(h.state().feedbackError);
   assert.equal(h.data.get(FEEDBACK_KEY), "{broken");
   assert.equal(h.data.has("coachAntoineRestDuration"), false);
@@ -449,7 +449,7 @@ for (const categories of combinations) test(`avis multiple ${categories.join(" +
 
 test("cases à cocher : désélection possible, aucune précision hors sélection", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.session.toggleFeedbackCategory("pauses"); h.session.toggleFeedbackCategory("duration");
   h.session.toggleFeedbackCategory("pauses");
   assert.deepEqual(h.state().feedbackCategories, ["duration"]);
@@ -465,7 +465,7 @@ test("cases à cocher : désélection possible, aucune précision hors sélectio
 
 for (const screen of ["category", "detail"]) test(`timeout ${screen} après choix partiels : aucune réponse ni adaptation automatique`, () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.advance(299_000); h.session.toggleFeedbackCategory("pauses"); h.session.toggleFeedbackCategory("duration");
   if (screen === "detail") { h.session.continueFeedback(); h.advance(299_000); h.session.setFeedbackDetail("pauses", "short"); }
   h.advance(299_999); assert.equal(h.state().feedbackScreen, screen);
@@ -477,7 +477,7 @@ for (const screen of ["category", "detail"]) test(`timeout ${screen} après choi
 
 test("sélections et précisions multiples retrouvées après réouverture sans changer le timeout", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.session.toggleFeedbackCategory("pauses"); h.session.toggleFeedbackCategory("difficulty");
   h.reopen(); assert.deepEqual(h.state().feedbackCategories, ["pauses", "difficulty"]);
   h.session.continueFeedback(); h.session.setFeedbackDetail("pauses", "short");
@@ -490,7 +490,7 @@ test("sélections et précisions multiples retrouvées après réouverture sans 
 
 test("retry d'un avis multiple : toutes les réponses conservées, un seul ajustement", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   for (const category of ["pauses", "duration", "difficulty"]) h.session.toggleFeedbackCategory(category);
   h.session.continueFeedback();
   h.session.setFeedbackDetail("pauses", "short"); h.session.setFeedbackDetail("duration", "long");
@@ -505,7 +505,7 @@ test("retry d'un avis multiple : toutes les réponses conservées, un seul ajust
 
 test("compatibilité : ancien avis exclusif et ancien écran de précision conservés", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   const draft = JSON.parse(h.data.get(DRAFT_KEY));
   delete draft.feedbackCategories; delete draft.feedbackDetails;
   draft.feedbackScreen = "detail"; draft.feedbackCategory = "duration";
@@ -520,7 +520,7 @@ test("compatibilité : ancien avis exclusif et ancien écran de précision conse
 
 test("réponse du Coach : délai distinct de 7 secondes, sans transition prématurée ni réécriture", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.session.toggleFeedbackCategory("pauses"); h.session.toggleFeedbackCategory("duration");
   h.session.continueFeedback(); h.session.setFeedbackDetail("pauses", "short");
   h.session.setFeedbackDetail("duration", "long"); h.session.submitFeedback();
@@ -537,7 +537,7 @@ test("réponse du Coach : délai distinct de 7 secondes, sans transition prémat
 
 test("délai de réponse paramétrable, indépendant du timeout de questionnaire", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1, END_FEEDBACK_TIMEOUT: 1000, FEEDBACK_ACKNOWLEDGEMENT_SECONDS: 2 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.session.toggleFeedbackCategory("difficulty"); h.session.continueFeedback();
   h.session.setFeedbackDetail("difficulty", "hard"); h.session.submitFeedback();
   h.advance(1000); assert.equal(h.state().feedbackScreen, "acknowledgement");
@@ -547,7 +547,7 @@ test("délai de réponse paramétrable, indépendant du timeout de questionnaire
 
 test("réouverture pendant la réponse : échéance conservée, aucun nouveau délai ni doublon", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } });
-  h.session.chooseDayForm("normal"); h.finish(); h.session.answer("no");
+  h.session.chooseDayForm("normal", "forme"); h.finish(); h.session.answer("no");
   h.session.toggleFeedbackCategory("duration"); h.session.continueFeedback();
   h.session.setFeedbackDetail("duration", "long"); h.session.submitFeedback();
   const deadline = h.state().acknowledgementDeadline;
@@ -561,7 +561,7 @@ test("réouverture pendant la réponse : échéance conservée, aucun nouveau d�
 test("absence de feedback, OUI et timeout : congé directement sans attente de réponse", () => {
   for (const path of ["no-feedback", "yes", "timeout"]) {
     const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: path === "no-feedback" ? 3 : 1 } });
-    h.session.chooseDayForm("normal"); h.finish();
+    h.session.chooseDayForm("normal", "forme"); h.finish();
     if (path === "yes") h.session.answer("yes");
     if (path === "timeout") h.advance(WORKOUT_CONFIG.END_FEEDBACK_TIMEOUT);
     assert.equal(h.state().feedbackScreen, "close"); assert.equal(h.state().acknowledgementDeadline, null);
@@ -573,7 +573,7 @@ test("absence de feedback, OUI et timeout : congé directement sans attente de r
 test("première découverte : présentation automatique, aucun temps compté avant confirmation", () => {
   const h = setup({ newUser: true });
   assert.equal(h.state().dayForm, null);
-  h.session.chooseDayForm("normal");
+  h.session.chooseDayForm("normal", "forme");
   assert.equal(h.state().instructionsOpen, true);
   assert.equal(h.state().firstDiscovery, true);
   h.session.toggle(); h.session.next(); h.advance(60_000);
@@ -589,7 +589,7 @@ test("première découverte : présentation automatique, aucun temps compté ava
 
 test("chaque nouvel exercice : récupération puis découverte, sans consommer son chrono", () => {
   const h = setup({ newUser: true });
-  h.session.chooseDayForm("low"); h.session.closeInstructions();
+  h.session.chooseDayForm("low", "forme"); h.session.closeInstructions();
   h.advance(100_000);
   assert.equal(h.state().step, 1);
   assert.equal(h.state().instructionsOpen, true);
@@ -616,13 +616,13 @@ test("découverte connue : pas de répétition automatique ; revue met en pause 
   assert.equal(h.state().running, false);
   h.session.closeInstructions(); h.advance(1000);
   assert.equal(h.state().activeSeconds, seconds + 1);
-  h.session.abandon(); h.session.chooseDayForm("normal");
+  h.session.abandon(); h.session.chooseDayForm("normal", "forme");
   assert.equal(h.state().instructionsOpen, false);
 });
 
 test("nouvelle séance : exercices découverts conservés, première présentation non répétée", () => {
-  const h = setup({ newUser: true }); h.session.chooseDayForm("normal"); h.session.closeInstructions();
-  h.session.abandon(); h.session.chooseDayForm("normal");
+  const h = setup({ newUser: true }); h.session.chooseDayForm("normal", "forme"); h.session.closeInstructions();
+  h.session.abandon(); h.session.chooseDayForm("normal", "forme");
   assert.equal(h.state().instructionsOpen, false);
   h.next(); h.next();
   assert.equal(h.state().step, 1);
@@ -631,7 +631,7 @@ test("nouvelle séance : exercices découverts conservés, première présentati
 
 test("mémoire découverte : échec de lecture ou écriture signalé sans ignorer la présentation", () => {
   const h = setup({ newUser: true });
-  h.data.set(DISCOVERY_KEY, "{broken"); h.session.chooseDayForm("normal");
+  h.data.set(DISCOVERY_KEY, "{broken"); h.session.chooseDayForm("normal", "forme");
   assert.ok(h.state().discoveryError);
   h.session.closeInstructions();
   assert.equal(h.state().instructionsOpen, true);
@@ -649,7 +649,7 @@ test("découverte stable entre séances, durées et intensités ; variante techn
   let sequence = 0;
   const open = (steps, form = "normal") => {
     const session = createWorkoutSession({ storage, steps, uuid: () => `different-session-${++sequence}` });
-    session.chooseDayForm(form);
+    session.chooseDayForm(form, "forme");
     return session;
   };
   let session = open([{ id: "exercise-A", seconds: 60 }]);
@@ -670,7 +670,7 @@ test("découverte stable entre séances, durées et intensités ; variante techn
 });
 
 test("découverte et revue sans limite : aucune fermeture ni reprise après une heure", () => {
-  const h = setup({ newUser: true }); h.session.chooseDayForm("normal");
+  const h = setup({ newUser: true }); h.session.chooseDayForm("normal", "forme");
   h.advance(3_600_000);
   assert.equal(h.state().instructionsOpen, true);
   assert.equal(h.state().firstDiscovery, true);
@@ -687,7 +687,7 @@ test("découverte et revue sans limite : aucune fermeture ni reprise après une 
 });
 
 test("sortie terminée : écran de fin conservé jusqu'au changement de route, aucun brouillon recréé au démontage", () => {
-  const h = setup(); h.session.chooseDayForm("normal"); h.finish();
+  const h = setup(); h.session.chooseDayForm("normal", "forme"); h.finish();
   const history = h.data.get(HISTORY_KEY);
   assert.equal(h.session.closeFinished(), true);
   assert.ok(h.state().finished);
@@ -695,4 +695,67 @@ test("sortie terminée : écran de fin conservé jusqu'au changement de route, a
   h.session.interrupt(); h.session.tick();
   assert.equal(h.data.has(DRAFT_KEY), false);
   assert.equal(h.data.get(HISTORY_KEY), history);
+});
+
+for (const [name, level] of [["absent", undefined], ["null", null], ["vide", ""], ["espaces", " "], ["inconnu", "expert"], ["type invalide", 0]]) {
+  test(`nouvelle séance : niveau ${name} refusé, aucun état ni brouillon créé`, () => {
+    const h = setup({ newUser: true });
+    const before = h.state(), data = new Map(h.data);
+    if (name === "absent") h.session.chooseDayForm("normal");
+    else h.session.chooseDayForm("normal", level);
+    h.session.toggle(); h.session.closeInstructions(); h.session.next(); h.advance(1000);
+    assert.deepEqual(h.state(), before);
+    assert.deepEqual(h.data, data);
+    assert.equal(h.data.has(DRAFT_KEY), false);
+    assert.equal(h.data.has("coachAntoineDayForm"), false);
+    assert.equal(h.data.has(HISTORY_KEY), false);
+    // Le refus n'a même pas consommé un identifiant de séance.
+    h.session.chooseDayForm("normal", "reprise");
+    assert.equal(h.state().id, "session-1");
+  });
+}
+
+for (const [name, level] of [["Reprise", "reprise"], ["Équilibré", "forme"], ["Tonique", "tonique"]]) {
+  test(`nouvelle séance : niveau ${name} accepté explicitement, puis démarrage`, () => {
+    const h = setup();
+    h.session.chooseDayForm("normal", level);
+    assert.ok(h.state().id);
+    assert.equal(h.state().level, level);
+    assert.equal(JSON.parse(h.data.get(DRAFT_KEY)).level, level);
+    h.session.toggle(); h.advance(1000);
+    assert.equal(h.state().running, true);
+    assert.equal(h.state().activeSeconds, 1);
+  });
+}
+
+test("refus de nouvelle création : historique et ancienne forme du jour conservés", () => {
+  const h = setup({ newUser: true });
+  const old = JSON.stringify([{ label: "Ancienne séance", date: "2025-01-01T12:00:00Z", activeSeconds: 19 }]);
+  h.data.set(HISTORY_KEY, old);
+  h.data.set("coachAntoineDayForm", "low");
+  h.session.chooseDayForm("high", null);
+  assert.equal(h.data.get(HISTORY_KEY), old);
+  assert.equal(h.data.get("coachAntoineDayForm"), "low");
+  assert.equal(h.data.has(DRAFT_KEY), false);
+  assert.equal(h.state().id, null);
+});
+
+test("compatibilité distincte : ancien brouillon sans niveau restauré sans attribution rétroactive", () => {
+  const h = setup();
+  h.session.chooseDayForm("normal", "reprise");
+  const legacy = JSON.parse(h.data.get(DRAFT_KEY));
+  legacy.level = null;
+  const raw = JSON.stringify(legacy);
+  h.data.set(DRAFT_KEY, raw);
+  const restored = createWorkoutSession({ storage: h.storage, now: () => 0 });
+  assert.equal(h.data.get(DRAFT_KEY), raw, "aucune migration à la lecture");
+  assert.equal(restored.getState().level, null);
+  assert.equal(restored.getState().interrupted, true);
+  restored.resume(); restored.toggle();
+  assert.equal(restored.getState().running, true);
+  assert.equal(JSON.parse(h.data.get(DRAFT_KEY)).level, null);
+  // Après abandon, il s'agit d'une nouvelle création : la règle stricte s'applique.
+  restored.abandon(); restored.chooseDayForm("normal");
+  assert.equal(restored.getState().id, null);
+  assert.equal(h.data.has(DRAFT_KEY), false);
 });

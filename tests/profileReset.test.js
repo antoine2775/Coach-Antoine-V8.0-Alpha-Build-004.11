@@ -24,7 +24,7 @@ test("autre personne : effacer profil entier, brouillon, forme et découverte ; 
   assert.equal(data.get(HISTORY_KEY), "[]");
   assert.equal(data.get("coachAntoineSound"), "off");
   const session = createWorkoutSession({ storage, uuid: () => "new-user" });
-  session.chooseDayForm("normal");
+  session.chooseDayForm("normal", "forme");
   assert.equal(session.getState().instructionsOpen, true);
   assert.equal(session.getState().firstDiscovery, true);
 });

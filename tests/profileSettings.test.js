@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router-dom";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -22,14 +23,16 @@ function storageWith(profile) {
 }
 
 for (const level of ["reprise", "forme", "tonique"]) {
-  test(`niveau ${level} : choix manuel, aucun recalcul et aucun autre champ modifié`, () => {
+  test(`niveau ${level} : choix manuel, aucun recalcul et historique du changement`, () => {
     const before = completedProfile();
     const changes = settings.prepareProfileSetting(before, "selectedLevel", level);
     assert.deepEqual(changes, { selectedLevel: level, levelOrigin: "manual" });
     const storage = storageWith(before);
-    assert.equal(updateProfile(changes, storage).status, "saved");
+    const date = "2026-10-29T12:00:00Z";
+    assert.equal(updateProfile(changes, storage, date).status, "saved");
     const loaded = readProfile(storage);
-    assert.deepEqual(loaded.profile, { ...before, selectedLevel: level, levelOrigin: "manual" });
+    assert.deepEqual(loaded.profile, { ...before, selectedLevel: level, levelOrigin: "manual",
+      ...(level === before.selectedLevel ? {} : { levelHistory: [{ level: before.selectedLevel, startedAt: null }, { level, startedAt: date }] }) });
     assert.equal(getOnboardingState(loaded).status, "complete");
   });
 }
@@ -194,7 +197,10 @@ test("modifications successives : autres champs, historique et réglages intégr
   keys.forEach((key) => ui.storage.data.set(key, `original:${key}`));
   ui.choose("Tonique"); ui.choose("Barre longue"); ui.choose("Vouvoiement");
   assert.deepEqual(ui.profile(), { ...completedProfile(), selectedLevel: "tonique", levelOrigin: "manual",
-    equipment: ["dumbbells", "longBar"], addressMode: "vous" });
+    equipment: ["dumbbells", "longBar"], addressMode: "vous", levelHistory: ui.profile().levelHistory });
+  assert.deepEqual(ui.profile().levelHistory.map((entry) => entry.level), ["forme", "tonique"]);
+  assert.equal(ui.profile().levelHistory[0].startedAt, null);
+  assert.ok(Number.isFinite(Date.parse(ui.profile().levelHistory[1].startedAt)));
   keys.forEach((key) => assert.equal(ui.storage.getItem(key), `original:${key}`));
   assert.deepEqual([...ui.storage.data.keys()].sort(), [...keys, PROFILE_KEY].sort());
   assert.equal(getOnboardingState(readProfile(ui.storage)).status, "complete");
@@ -203,15 +209,15 @@ test("modifications successives : autres champs, historique et réglages intégr
 test("page Coach : trois blocs intégrés, contrôles sonores et voix existants conservés", () => {
   const code = buildSync({
     stdin: { contents: 'export { default as Coach } from "./src/pages/Coach.jsx"; export { UserProfileContext } from "./src/context/UserProfileContext.jsx";', resolveDir: process.cwd() },
-    bundle: true, write: false, platform: "node", format: "cjs", external: ["react"],
-    define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
+    bundle: true, write: false, platform: "node", format: "cjs", external: ["react", "react-router-dom"],
+    define: { "import.meta.env.DEV": "false", "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
   }).outputFiles[0].text;
   const module = { exports: {} };
   vm.runInNewContext(code, { module, require: createRequire(import.meta.url) });
   const { Coach, UserProfileContext } = module.exports;
-  const html = renderToStaticMarkup(React.createElement(UserProfileContext.Provider,
+  const html = renderToStaticMarkup(React.createElement(MemoryRouter, null, React.createElement(UserProfileContext.Provider,
     { value: { profile: completedProfile(), updateUserProfile() {} } },
-    React.createElement(Coach, { soundEnabled: true, setSoundEnabled() {} })));
+    React.createElement(Coach, { soundEnabled: true, setSoundEnabled() {} }))));
   for (const text of ["Mon niveau", "Mon matériel", "Comment Coach Antoine me parle", "Riff de guitare",
     "Tester le riff", "Voix du Coach", "Prévue dans une prochaine version", "Présentation", "À propos"]) {
     assert.ok(html.includes(text));

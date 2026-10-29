@@ -59,6 +59,10 @@ export function getPersonalizedTexts(profile) {
       : "Reste dans une amplitude confortable. Arrête l’exercice en cas de douleur ou de malaise.",
     restQuestion: vous ? "Les temps de récupération vous ont-ils convenu ?" : "Les temps de récupération t’ont-ils convenu ?",
     journey: vous ? "VOTRE PARCOURS" : "TON PARCOURS",
+    levelHistoryTitle: vous ? "Historique de vos niveaux" : "Historique de tes niveaux",
+    recentFormsTitle: vous ? "Votre forme ces 4 dernières semaines" : "Ta forme ces 4 dernières semaines",
+    levelHistoryExpand: "Voir tout l’historique",
+    levelHistoryCollapse: "Réduire l’historique",
     emptyHistory: vous ? "Votre prochaine séance apparaîtra ici." : "Ta prochaine séance apparaîtra ici.",
     understand: vous ? "Vous commencez à comprendre ?" : "Tu commences à comprendre ?",
     zzTop: vous

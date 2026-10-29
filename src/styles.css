@@ -748,3 +748,22 @@
 }
 .onboarding-level-summary .onboarding-level-name { margin-bottom: 8px; color: #164c86; }
 .onboarding-level-summary p:last-child { margin-bottom: 0; }
+
+/* Progression : deux rubriques compactes, sans indicateur de performance. */
+.level-history, .recent-forms { list-style: none; padding: 0; margin: 0; }
+.level-history li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 7px 0; }
+.level-history small { font-size: .78rem; }
+.progression-summary > div + .progression-forms { border-top: 1px solid #dce6f1; margin-top: 18px; padding-top: 18px; }
+.recent-forms li { padding: 5px 0; color: #314a63; }
+.progression-session { flex-direction: column; gap: 5px; }
+.progression-session time { font-weight: 650; color: #15304f; }
+.progression-session span { color: #40576e; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* TEMPORAIRE : zone de développement séparée des réglages utilisateur. */
+.development-test-zone { border-top: 1px dashed #8ca6c2; margin-top: 26px; padding-top: 20px; }
+.development-test-zone h3 { font-size: .8rem; letter-spacing: .08em; color: #52667e; }
+.development-test-zone h4 { font-size: 1rem; margin: 12px 0; }
+
+.settings-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.settings-heading h2 { margin-bottom: 0; }
+.settings-back { min-height: 44px; padding: 10px 14px; font-size: .875rem; font-weight: 500; }

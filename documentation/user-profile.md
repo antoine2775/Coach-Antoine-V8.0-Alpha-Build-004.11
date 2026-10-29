@@ -42,6 +42,7 @@ ne permettent pas de décider de réinitialiser un profil.
 | `equipment` | Liste sans doublons : `dumbbells`, `longBar`, `resistanceBands` ; `[]` = aucun matériel sportif |
 | `proposedLevel` | `reprise`, `forme`, `tonique` ; `forme` s'affiche « Équilibré » ; `null` avant évaluation |
 | `selectedLevel` | Mêmes valeurs ; `null` avant décision |
+| `levelHistory` | Extension optionnelle : liste chronologique de `{ level, startedAt }` ; date ISO ou `null` si la date ancienne est inconnue |
 | `levelOrigin` | `coach` = proposition acceptée, `manual` = choix explicite ; `null` avant décision |
 | `assessmentAnswers` | Tableau ordonné de 9 réponses JSON ; 9 valeurs `null` par défaut |
 | `assessmentDate` | Date sous forme de chaîne interprétable, ISO recommandée ; `null` par défaut |

@@ -4,6 +4,7 @@ import { WORKOUT_CONFIG } from "./config.js";
 import { FEEDBACK_CATEGORIES, feedbackAnswers, isFeedbackComplete, validFeedbackChoice, recordFeedback, scheduleFeedback } from "./feedback.js";
 import { readDiscoveredExercises, discoverExercise, getExerciseDiscoveryId } from "../utils/exerciseDiscovery.js";
 import { createWorkoutId } from "../utils/workoutId.js";
+import { LEVEL_KEYS } from "../utils/levelHistory.js";
 
 export const DRAFT_KEY = "coachAntoineWorkoutDraftV1";
 const FORMS = ["low", "normal", "high"];
@@ -144,7 +145,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     state.running = false;
     anchor = null;
     state.finished = { id: state.id, date: new Date(wallNow()).toISOString(),
-      activeSeconds: state.activeSeconds, label: "Séance Coach Antoine", dayForm: state.dayForm };
+      activeSeconds: state.activeSeconds, label: "Séance Coach Antoine", dayForm: state.dayForm, level: state.level };
     // Outbox distincte de l'historique : permet un retry après réouverture.
     checkpoint(true);
     save();
@@ -212,8 +213,8 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       countdown: state.phase === "rest" && state.remaining > 0 && displayedSeconds(state.remaining) <= config.COUNTDOWN_SECONDS,
       progress: state.phase === "finished" ? 100 : 100 * (state.step + (state.phase === "rest" ? 1
         : 1 - state.remaining / steps[state.step].seconds)) / steps.length }),
-    chooseDayForm(choice, level = null) {
-      if (state.id || draftBlocked || !FORMS.includes(choice)) return;
+    chooseDayForm(choice, level) {
+      if (state.id || draftBlocked || !FORMS.includes(choice) || !LEVEL_KEYS.includes(level)) return;
       state.id = uuid(); state.dayForm = choice; state.level = level;
       presentNewExercise();
       try { storage.setItem("coachAntoineDayForm", choice); } catch { /* brouillon signale l'erreur */ }

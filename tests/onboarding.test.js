@@ -102,7 +102,7 @@ test("stockage absent ou lecture refusée : indisponible", () => {
 const uiCode = buildSync({
   stdin: { contents: 'export { AppRoutes } from "./src/App.jsx"; export { UserProfileContext } from "./src/context/UserProfileContext.jsx"; export { default as SplashScreen } from "./src/components/SplashScreen.jsx";', resolveDir: process.cwd() },
   bundle: true, write: false, platform: "node", format: "cjs", external: ["react", "react-router-dom"],
-  define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
+  define: { "import.meta.env.DEV": "false", "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
 }).outputFiles[0].text;
 
 function renderRoutes(state, route = "/", basename = "/") {
@@ -142,7 +142,7 @@ for (const status of ["loading", "invalid", "unsupported-version", "unavailable"
 }
 
 for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comment vous sentez-vous"],
-  ["/progression", "Historique récent"], ["/carnet", "LE CARNET DU COACH"], ["/coach", "Réglages"]]) {
+  ["/progression", "Progression"], ["/carnet", "LE CARNET DU COACH"], ["/coach", "Réglages"]]) {
   test(`profil terminé : route ${route} préservée`, () => {
     const html = renderRoutes(stateFrom(storageWith(completedProfile())), route);
     assert.ok(html.includes(expected));

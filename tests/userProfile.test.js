@@ -48,8 +48,9 @@ test("valeurs par défaut indépendantes, brouillon valide", () => {
 
 test("sauvegarde et relecture d'un profil complet", () => {
   const storage = memoryStorage(), profile = completeProfile();
-  assert.equal(saveProfile(profile, storage).status, "saved");
-  assert.deepEqual(readProfile(storage), { status: "valid", profile });
+  const date = "2026-10-29T12:00:00Z";
+  assert.equal(saveProfile(profile, storage, date).status, "saved");
+  assert.deepEqual(readProfile(storage), { status: "valid", profile: { ...profile, levelHistory: [{ level: profile.selectedLevel, startedAt: date }] } });
   assert.equal(profileExists(storage), true);
   assert.equal(isOnboardingCompleted(storage), true);
   profile.equipment.push("longBar");

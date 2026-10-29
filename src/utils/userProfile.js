@@ -1,3 +1,5 @@
+import { validLevelHistory, recordLevelChange } from "./levelHistory.js";
+
 export const PROFILE_KEY = "coachAntoineProfile";
 export const PROFILE_VERSION = 1;
 
@@ -70,6 +72,7 @@ export function validateProfile(profile) {
       (!Object.hasOwn(profile, "equipmentSelectionMade") || typeof profile.equipmentSelectionMade === "boolean") &&
       optionalChoice(profile.proposedLevel, LEVELS) && optionalChoice(profile.selectedLevel, LEVELS) &&
       optionalChoice(profile.levelOrigin, ["coach", "manual"]) &&
+      (!Object.hasOwn(profile, "levelHistory") || validLevelHistory(profile.levelHistory)) &&
       Array.isArray(profile.assessmentAnswers) && profile.assessmentAnswers.length === 9 &&
       (profile.assessmentDate === null || (typeof profile.assessmentDate === "string" && Number.isFinite(Date.parse(profile.assessmentDate)))) &&
       optionalString(profile.assessmentVersion) &&
@@ -113,25 +116,27 @@ export function readProfile(storage) {
   } catch { return result("invalid"); }
 }
 
-export function saveProfile(profile, storage) {
+export function saveProfile(profile, storage, now = new Date().toISOString()) {
   if (!validateProfile(profile)) return result("invalid");
   const current = readProfile(storage);
   // Aucun remplacement silencieux d'un profil corrompu ou d'une autre version.
   if (current.status !== "absent" && current.status !== "valid") return current;
   try {
     const target = getStorage(storage);
-    const serialized = JSON.stringify(profile);
+    const next = recordLevelChange(profile, current.profile, now);
+    if (!validateProfile(next)) return result("invalid");
+    const serialized = JSON.stringify(next);
     target.setItem(PROFILE_KEY, serialized);
     return result("saved", JSON.parse(serialized));
   } catch { return result("unavailable"); }
 }
 
-export function updateProfile(changes, storage) {
+export function updateProfile(changes, storage, now = new Date().toISOString()) {
   const current = readProfile(storage);
   if (current.status !== "absent" && current.status !== "valid") return current;
   try {
     if (!object(changes) || !isJsonValue(changes)) return result("invalid");
-    return saveProfile({ ...(current.profile || createEmptyProfile()), ...changes }, storage);
+    return saveProfile({ ...(current.profile || createEmptyProfile()), ...changes }, storage, now);
   } catch { return result("invalid"); }
 }
 
