@@ -16,6 +16,21 @@ export function getPersonalizedTexts(profile) {
   return {
     interrupted: vous ? "Votre séance est en pause. Que souhaitez-vous faire ?" : "Ta séance est en pause. Que souhaites-tu faire ?",
     getReady: vous ? "Préparez-vous pour la suite." : "Prépare-toi pour la suite.",
+    transitionTitle: vous ? "Préparez-vous" : "Prépare-toi",
+    transitionNext: "Prochain exercice :",
+    hydrationMessage: vous ? "Moi, j’en profite pour boire un peu… Vous pouvez en faire autant si vous voulez."
+      : "Moi, j’en profite pour boire un peu… Tu peux en faire autant si tu veux.",
+    transitionMessage: (key) => (vous ? {
+      sit: "Installez-vous sur la chaise.",
+      wall: "Placez-vous debout face au mur, les mains en appui.",
+      sitDown: "Asseyez-vous sur la chaise.",
+      stand: "Relevez-vous tranquillement.",
+    } : {
+      sit: "Installe-toi sur la chaise.",
+      wall: "Place-toi debout face au mur, les mains en appui.",
+      sitDown: "Assieds-toi sur la chaise.",
+      stand: "Relève-toi tranquillement.",
+    })[key],
     earlySkipReminder: vous ? "Prenez votre temps. Un exercice fait lentement est plus efficace."
       : "Prends ton temps. Un exercice fait lentement est plus efficace.",
     adaptationQuestion: vous ? "Vos exercices et vos temps de récupération étaient-ils bien adaptés aujourd’hui ?"

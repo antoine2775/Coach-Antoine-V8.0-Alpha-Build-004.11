@@ -139,8 +139,17 @@ function workoutUI(profile) {
     typeof node !== "object" ? String(node) : text(node.props.children);
   function render() { index = 0; tree = expand(module.exports.Workout()); }
   function click(label) {
+    const session = cells.find((cell) => typeof cell?.tick === "function");
+    const wasRunning = session?.getState().running;
     const node = nodes(tree).find((item) => item.type === "button" && text(item) === label);
     assert.ok(node, `bouton ${label}`); clock += 400; node.props.onClick(); render();
+    if (label === "Suivant" && ["transition", "hydration"].includes(session?.getState().phase)) {
+      const running = session.getState().running;
+      if (!running) session.toggle();
+      clock += session.getState().remaining * 1000; session.tick();
+      if (!wasRunning) session.toggle();
+      render();
+    }
   }
   render();
   function change(label) {

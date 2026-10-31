@@ -1,5 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { resetDevelopmentData } from "../utils/developmentReset.js";
+import { playCountdownPrototype } from "../utils/countdownPrototype.js";
 
 // TEMPORAIRE : composant autonome, intégré uniquement en mode développement.
 export default function DevelopmentTestZone() {
@@ -7,6 +8,27 @@ export default function DevelopmentTestZone() {
   const [error, setError] = useState(false);
   const [pending, setPending] = useState(false);
   const resetting = useRef(false);
+  const playback = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  useEffect(() => () => {
+    const current = playback.current;
+    playback.current = null;
+    current?.stop();
+  }, []);
+  const testSound = () => {
+    if (playback.current) return;
+    setAudioError(false);
+    setPlaying(true);
+    const current = playCountdownPrototype();
+    playback.current = current;
+    current.finished.then((success) => {
+      if (playback.current !== current) return;
+      playback.current = null;
+      setPlaying(false);
+      setAudioError(!success);
+    });
+  };
   const cancel = () => { if (!resetting.current) { setConfirming(false); setError(false); } };
   const reset = () => {
     if (!confirming || resetting.current) return;
@@ -24,6 +46,8 @@ export default function DevelopmentTestZone() {
   };
   return <section className="development-test-zone" aria-labelledby="development-test-title">
     <h3 id="development-test-title">ZONE DE TEST</h3>
+    <button type="button" className="secondary-button full" disabled={playing || pending} onClick={testSound}>Tester vibraphone</button>
+    {audioError && <p role="alert">Le son n’a pas pu être joué. Réessayez.</p>}
     {!confirming ? <button type="button" className="secondary-button full" onClick={() => setConfirming(true)}>Remettre Coach Antoine à zéro</button> :
       <div role="alertdialog" aria-labelledby="development-reset-title" aria-describedby="development-reset-description"
         onKeyDown={(event) => { if (event.key === "Escape") cancel(); }}>

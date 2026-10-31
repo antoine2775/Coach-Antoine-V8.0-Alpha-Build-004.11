@@ -10,22 +10,40 @@ import { workoutSteps } from "../src/data.js";
 function setup({ data = new Map(), config = {}, steps = workoutSteps, newUser = false } = {}) {
   if (!newUser && !data.has(DISCOVERY_KEY)) data.set(DISCOVERY_KEY, JSON.stringify(steps.map((step) => step.id).filter(Boolean)));
   let clock = 0, wall = Date.parse("2026-10-18T10:00:00Z"), sequence = 0;
-  const failures = new Set(), sounds = [];
+  const failures = new Set(), sounds = [], countdowns = [];
   const storage = {
     getItem(key) { if (failures.has(`read:${key}`)) throw Error("read"); return data.get(key) ?? null; },
     setItem(key, value) { if (failures.has(key)) throw Error("quota"); data.set(key, value); },
     removeItem(key) { if (failures.has(key)) throw Error("remove"); data.delete(key); },
   };
   const options = { storage, now: () => clock, wallNow: () => wall, uuid: () => `session-${++sequence}`,
-    sound: (value) => sounds.push(value), steps, config: { ...WORKOUT_CONFIG, ...config } };
+    sound: (value) => sounds.push(value), countdownSound: () => countdowns.push(session.getState().displayedRemaining), steps, config: { ...WORKOUT_CONFIG, ...config } };
   let session = createWorkoutSession(options);
   return {
-    data, failures, storage, sounds, get session() { return session; },
+    data, failures, storage, sounds, countdowns, get session() { return session; },
     state: () => session.getState(),
     advance(ms, tick = true) { clock += ms; wall += ms; if (tick) session.tick(); },
     start(form = "normal", level = "forme") { session.chooseDayForm(form, level); session.toggle(); },
-    next() { clock += WORKOUT_CONFIG.NEXT_GUARD_MS + 1; wall += WORKOUT_CONFIG.NEXT_GUARD_MS + 1; session.next(); },
-    finish() { while (!session.getState().finished) this.next(); },
+    next() {
+      const wasRunning = session.getState().running;
+      clock += WORKOUT_CONFIG.NEXT_GUARD_MS + 1; wall += WORKOUT_CONFIG.NEXT_GUARD_MS + 1; session.next();
+      if (["transition", "hydration"].includes(session.getState().phase)) {
+        const running = session.getState().running;
+        if (!running) session.toggle();
+        this.advance(session.getState().remaining * 1000);
+        if (!wasRunning) session.toggle();
+      }
+    },
+    finish() {
+      while (!session.getState().finished) {
+        if (["transition", "hydration"].includes(session.getState().phase)) {
+          const wasRunning = session.getState().running;
+          if (!wasRunning) session.toggle();
+          this.advance(session.getState().remaining * 1000);
+          if (!wasRunning) session.toggle();
+        } else this.next();
+      }
+    },
     reopen() { session = createWorkoutSession(options); session.activate(); },
     fresh() { assert.equal(session.abandon(), true); session = createWorkoutSession(options); },
   };
@@ -38,11 +56,15 @@ test("fin naturelle, récupération de 15 s incluant 3/2/1, exercice suivant aut
   assert.equal(h.state().remaining, 15);
   assert.equal(h.state().activeSeconds, 60);
   h.advance(11_000); assert.equal(h.state().countdown, false);
+  assert.deepEqual(h.countdowns, []);
   for (const value of [3, 2, 1]) {
     h.advance(1000);
     assert.equal(h.state().countdown, true);
     assert.equal(h.state().displayedRemaining, value);
     assert.equal(h.state().activeSeconds, 60);
+    assert.deepEqual(h.countdowns, [3, 2, 1].slice(0, 4 - value));
+    h.session.tick(); h.session.tick(); // Les rafraîchissements ne doublent pas la note.
+    assert.equal(h.countdowns.length, 4 - value);
   }
   h.advance(1000);
   assert.equal(h.state().step, 1);
@@ -50,6 +72,59 @@ test("fin naturelle, récupération de 15 s incluant 3/2/1, exercice suivant aut
   assert.equal(h.state().remaining, 75);
   assert.equal(h.state().running, true);
   assert.deepEqual(h.sounds, []);
+  assert.deepEqual(h.countdowns, [3, 2, 1]);
+});
+
+for (const rest of [10, 15, 30]) test(`vibraphone : récupération variable de ${rest}s, uniquement 3/2/1`, () => {
+  const h = setup({ data: new Map([["coachAntoineRestDuration", String(rest)]]) }); h.start();
+  h.advance(60_000);
+  h.advance((rest - 3) * 1000);
+  h.advance(1000); h.advance(1000); h.advance(1000);
+  assert.deepEqual(h.countdowns, [3, 2, 1]);
+  assert.equal(h.state().phase, "exercise");
+  assert.equal(h.state().remaining, 75);
+  assert.equal(h.state().activeSeconds, 60);
+  assert.deepEqual(h.sounds, []);
+});
+
+test("son désactivé : 3/2/1 reste visuel, aucune note ni effet sur le timer", () => {
+  const h = setup({ data: new Map([["coachAntoineSound", "off"]]) }); h.start();
+  h.advance(72_000);
+  for (const seconds of [3, 2, 1]) {
+    assert.equal(h.state().displayedRemaining, seconds);
+    assert.equal(h.state().countdown, true);
+    h.advance(1000);
+  }
+  assert.deepEqual(h.countdowns, []);
+  assert.equal(h.state().phase, "exercise");
+  assert.equal(h.state().remaining, 75);
+});
+
+test("décompte : pause/reprise sans doublon et récupération suivante réarmée", () => {
+  const h = setup(); h.start(); h.advance(72_000);
+  h.session.toggle(); h.advance(5000);
+  assert.deepEqual(h.countdowns, [3]);
+  h.session.toggle(); h.advance(100); h.advance(900); h.advance(1000); h.advance(1000);
+  assert.deepEqual(h.countdowns, [3, 2, 1]);
+  h.advance(75_000); h.advance(12_000); h.advance(1000); h.advance(1000); h.advance(1000);
+  assert.deepEqual(h.countdowns, [3, 2, 1, 3, 2, 1]);
+});
+
+test("décompte : activation sonore en cours et aucun rattrapage groupé après un tick retardé", () => {
+  const h = setup({ data: new Map([["coachAntoineSound", "off"]]) }); h.start(); h.advance(72_000);
+  h.data.set("coachAntoineSound", "on");
+  h.advance(100); assert.deepEqual(h.countdowns, []);
+  h.advance(1900); assert.deepEqual(h.countdowns, [1]);
+  h.advance(1000); assert.deepEqual(h.countdowns, [1]);
+});
+
+test("décompte : brouillon restauré silencieux jusqu'à la reprise, interruption sans nouvelle note", () => {
+  const h = setup(); h.start(); h.advance(72_000); h.reopen();
+  h.advance(5000); assert.deepEqual(h.countdowns, [3]);
+  h.session.resume(); h.advance(1000);
+  assert.deepEqual(h.countdowns, [3, 2]);
+  h.session.interrupt(); h.advance(5000);
+  assert.deepEqual(h.countdowns, [3, 2]);
 });
 
 test("dérive des callbacks : calcul écoulé, fractions et dépassement conservés", () => {
@@ -76,7 +151,7 @@ for (const phase of ["exercise", "rest"]) test(`Pause/Reprendre exacte en ${phas
 
 test("séance entièrement automatique : 915 s actives, 11 récupérations, sauvegarde avant avis", () => {
   const h = setup({ config: { FEEDBACK_EVERY_N_SESSIONS: 1 } }); h.start();
-  h.advance((915 + 11 * 15) * 1000);
+  h.advance((915 + 11 * 15 + 28 + 10) * 1000);
   assert.equal(h.state().phase, "finished");
   assert.equal(h.state().activeSeconds, 915);
   assert.equal(h.state().feedbackScreen, "general");

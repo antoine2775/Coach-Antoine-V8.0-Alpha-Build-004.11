@@ -9,6 +9,12 @@ import { useWorkoutSession } from "../workout/useWorkoutSession";
 import { FEEDBACK_OPTIONS, feedbackAnswers, isFeedbackComplete } from "../workout/feedback";
 
 const fmt = (value) => `${Math.floor(value / 60).toString().padStart(2, "0")}:${(value % 60).toString().padStart(2, "0")}`;
+const TRANSITION_IMAGES = {
+  sit: ["coach-preparation-chaise.png", "Coach Antoine debout à côté de la chaise, main ouverte vers celle-ci."],
+  wall: ["coach-appui-mur.png", "Coach Antoine face au mur, les deux mains en appui."],
+  sitDown: ["coach-assise-chaise.png", "Coach Antoine assis sur la chaise."],
+  stand: ["coach-releve-chaise.png", "Coach Antoine se relève de la chaise."],
+};
 
 export default function Workout() {
   const { profile, openSplash } = useUserProfile();
@@ -131,6 +137,28 @@ export default function Workout() {
       </div>
     </section>;
   }
+
+  if (s.phase === "hydration") return <section className="workout-card workout-transition workout-hydration" aria-label="Hydratation">
+    <p className="exercise-instruction" role="status">{texts.hydrationMessage}</p>
+    <img className="transition-illustration" src={`${import.meta.env.BASE_URL}coach/transitions/coach-hydratation.png`}
+      alt="Coach Antoine boit un peu d’eau." />
+    <p className="transition-next"><span>{texts.transitionNext}</span><strong>{workoutSteps[s.step + 1]?.name}</strong></p>
+    {warning}
+    <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : "Reprendre"}</button>
+    {import.meta.env.DEV && <button className="secondary-button" onClick={() => act("skipTimedPhase")}>Suivant</button>}
+  </section>;
+
+  if (s.phase === "transition") return <section className="workout-card workout-transition" aria-labelledby="transition-title">
+    <h1 id="transition-title">{texts.transitionTitle}</h1>
+    <p className="exercise-instruction" role="status">{texts.transitionMessage(s.transitionMessage)}</p>
+    <img className="transition-illustration" data-transition-illustration={s.transitionMessage}
+      src={`${import.meta.env.BASE_URL}coach/transitions/${TRANSITION_IMAGES[s.transitionMessage][0]}`}
+      alt={TRANSITION_IMAGES[s.transitionMessage][1]} />
+    <p className="transition-next"><span>{texts.transitionNext}</span><strong>{workoutSteps[s.step + 1]?.name}</strong></p>
+    {warning}
+    <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : "Reprendre"}</button>
+    {import.meta.env.DEV && <button className="secondary-button" onClick={() => act("skipTimedPhase")}>Suivant</button>}
+  </section>;
 
   const resting = s.phase === "rest";
   const target = s.dayForm === "low" ? cur.targetLow : s.dayForm === "high" ? cur.targetHigh : cur.targetNormal;

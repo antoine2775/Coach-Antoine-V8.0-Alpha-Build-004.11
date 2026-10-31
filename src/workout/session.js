@@ -5,6 +5,8 @@ import { FEEDBACK_CATEGORIES, feedbackAnswers, isFeedbackComplete, validFeedback
 import { readDiscoveredExercises, discoverExercise, getExerciseDiscoveryId } from "../utils/exerciseDiscovery.js";
 import { createWorkoutId } from "../utils/workoutId.js";
 import { LEVEL_KEYS } from "../utils/levelHistory.js";
+import { getWorkoutTransition, TRANSITION_SECONDS } from "./transitions.js";
+import { isHydrationBreak, HYDRATION_SECONDS } from "./hydration.js";
 
 export const DRAFT_KEY = "coachAntoineWorkoutDraftV1";
 const FORMS = ["low", "normal", "high"];
@@ -16,7 +18,7 @@ const displayedSeconds = (value) => Math.ceil(Math.max(0, value - 1e-7));
 // passent par les mêmes transitions. React n'est que l'affichage.
 export function createWorkoutSession({ storage, now = () => performance.now(),
   wallNow = () => Date.now(), uuid = createWorkoutId,
-  sound = () => {}, steps = workoutSteps, config = WORKOUT_CONFIG } = {}) {
+  sound = () => {}, countdownSound = () => {}, steps = workoutSteps, config = WORKOUT_CONFIG } = {}) {
   let state = empty();
   let anchor = null;
   let lastNext = -Infinity;
@@ -24,6 +26,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   let draftBlocked = false;
   let lastCheckpoint = "";
   let closed = false;
+  let lastCountdown = "";
   const totalExerciseSeconds = steps.reduce((sum, step) => sum + step.seconds, 0);
 
   function restDuration() {
@@ -46,11 +49,13 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     const details = value?.feedbackDetails ?? {};
     return value?.version === 1 && typeof value.id === "string" && value.id.length > 0 &&
       FORMS.includes(value.dayForm) && [null, "reprise", "forme", "tonique"].includes(value.level) &&
-      ["exercise", "rest", "finished"].includes(value.phase) && Number.isInteger(value.step) &&
+      ["exercise", "rest", "transition", "hydration", "finished"].includes(value.phase) && Number.isInteger(value.step) &&
       value.step >= 0 && value.step < steps.length && finite(value.remaining) &&
       finite(value.activeSeconds) && value.activeSeconds <= totalExerciseSeconds &&
       finite(value.restDuration) && value.restDuration >= config.MIN_REST && value.restDuration <= config.MAX_REST &&
-      value.remaining <= (value.phase === "rest" ? value.restDuration : steps[value.step].seconds) &&
+      value.remaining <= (value.phase === "rest" ? value.restDuration : value.phase === "transition" ? TRANSITION_SECONDS : value.phase === "hydration" ? HYDRATION_SECONDS : steps[value.step].seconds) &&
+      (value.phase !== "hydration" || isHydrationBreak(steps, value.step)) &&
+      (value.phase !== "transition" || !!getWorkoutTransition(steps, value.step)) &&
       typeof value.started === "boolean" && Number.isInteger(value.earlyCount) && value.earlyCount >= 0 &&
       (value.instructionsOpen === undefined || typeof value.instructionsOpen === "boolean") &&
       (value.firstDiscovery === undefined || typeof value.firstDiscovery === "boolean") &&
@@ -158,7 +163,21 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       if (state.step === steps.length - 1) { finish(); return; }
       state.phase = "rest";
       state.remaining = state.restDuration;
-    } else if (state.phase === "rest") {
+    } else if (state.phase === "rest" && getWorkoutTransition(steps, state.step)) {
+      state.phase = "transition";
+      state.remaining = TRANSITION_SECONDS;
+      // Suivant peut atteindre la préparation avant tout démarrage de l'horloge.
+      // Une séance déjà démarrée conserve en revanche sa pause volontaire.
+      if (!state.started) {
+        state.started = true; state.running = true; anchor = now();
+      }
+    } else if (state.phase === "rest" && isHydrationBreak(steps, state.step)) {
+      state.phase = "hydration";
+      state.remaining = HYDRATION_SECONDS;
+      if (!state.started) {
+        state.started = true; state.running = true; anchor = now();
+      }
+    } else if (["rest", "transition", "hydration"].includes(state.phase)) {
       state.step++;
       state.phase = "exercise";
       state.remaining = steps[state.step].seconds;
@@ -197,6 +216,14 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
         lastNext = time; // Fin naturelle + Suivant au même instant : un seul passage.
       }
     }
+    const seconds = displayedSeconds(state.remaining);
+    if (state.running && state.phase === "rest" && seconds > 0 && seconds <= config.COUNTDOWN_SECONDS) {
+      const key = `${state.step}/${seconds}`;
+      if (key !== lastCountdown) {
+        lastCountdown = key;
+        try { if (storage.getItem("coachAntoineSound") !== "off") countdownSound(); } catch { /* audio facultatif */ }
+      }
+    }
     return changed;
   }
   function timeoutFeedback() {
@@ -210,8 +237,9 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   }
   const api = {
     getState: () => ({ ...state, displayedRemaining: displayedSeconds(state.remaining),
+      transitionMessage: state.phase === "transition" ? getWorkoutTransition(steps, state.step)?.message : null,
       countdown: state.phase === "rest" && state.remaining > 0 && displayedSeconds(state.remaining) <= config.COUNTDOWN_SECONDS,
-      progress: state.phase === "finished" ? 100 : 100 * (state.step + (state.phase === "rest" ? 1
+      progress: state.phase === "finished" ? 100 : 100 * (state.step + (["rest", "transition", "hydration"].includes(state.phase) ? 1
         : 1 - state.remaining / steps[state.step].seconds)) / steps.length }),
     chooseDayForm(choice, level) {
       if (state.id || draftBlocked || !FORMS.includes(choice) || !LEVEL_KEYS.includes(level)) return;
@@ -229,9 +257,21 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     next() {
       if (!state.id || state.finished || state.interrupted || state.instructionsOpen) return;
       const changed = settle();
+      if (["transition", "hydration"].includes(state.phase)) { checkpoint(); return; }
       if (changed || now() - lastNext < config.NEXT_GUARD_MS || state.finished) { checkpoint(); return; }
       lastNext = now();
       transition(state.phase === "exercise" && displayedSeconds(state.remaining) > config.EARLY_SKIP_REMAINING_SECONDS);
+      checkpoint(true);
+    },
+    // Commande des outils de développement : ne traverse jamais deux phases.
+    skipTimedPhase() {
+      if (!state.id || state.finished || state.interrupted || state.instructionsOpen ||
+          !["transition", "hydration"].includes(state.phase)) return;
+      const changed = settle();
+      if (!changed && ["transition", "hydration"].includes(state.phase)) {
+        lastNext = now();
+        transition();
+      }
       checkpoint(true);
     },
     tick() { settle(); timeoutFeedback(); checkpoint(); },
@@ -286,6 +326,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       try { storage.removeItem(DRAFT_KEY); }
       catch { state.draftError = "Impossible d’effacer la sauvegarde temporaire. Réessayez."; return false; }
       state = empty(); draftBlocked = false; closed = false; anchor = null; lastNext = -Infinity; lastCheckpoint = "";
+      lastCountdown = "";
       return true;
     },
     save,

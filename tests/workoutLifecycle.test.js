@@ -10,17 +10,21 @@ import { FEEDBACK_KEY } from "../src/workout/feedback.js";
 import { DRAFT_KEY } from "../src/workout/session.js";
 import { HISTORY_KEY } from "../src/utils/workoutHistory.js";
 import { WORKOUT_CONFIG } from "../src/workout/config.js";
+import { getWorkoutTransition } from "../src/workout/transitions.js";
+import { getPersonalizedTexts } from "../src/utils/personalizedTexts.js";
+import { readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
-const code = buildSync({
+function compiled(dev) { return buildSync({
   entryPoints: ["src/pages/Workout.jsx"], bundle: true, write: false,
   platform: "node", format: "cjs", external: ["react", "react-router-dom"],
-  define: { "import.meta.env.BASE_URL": '"/"' },
-}).outputFiles[0].text;
+  define: { "import.meta.env.BASE_URL": '"/"', "import.meta.env.DEV": String(dev) },
+}).outputFiles[0].text; }
+const code = compiled(false), devCode = compiled(true);
 
 // Le vrai composant ET son hook sont exécutés. Les effets sont montés/nettoyés,
 // avec événements du navigateur et horloge contrôlés, sans attente réelle.
-function mount({ mode = "tu", due = false, newUser = false } = {}) {
+function mount({ mode = "tu", due = false, newUser = false, dev = false } = {}) {
   let cells = [], index = 0, dirty = true, pending = [], tree, clock = 0, wall = Date.parse("2026-10-18T10:00:00Z"), id = 0;
   const data = new Map([["coachAntoineSound", "off"]]);
   if (due) data.set(FEEDBACK_KEY, JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: "forme", pendingReason: null, sessions: [] }));
@@ -48,7 +52,7 @@ function mount({ mode = "tu", due = false, newUser = false } = {}) {
     },
   };
   const module = { exports: {} };
-  vm.runInNewContext(code, { module, require: (name) => name === "react" ? react : require(name), document, window,
+  vm.runInNewContext(dev ? devCode : code, { module, require: (name) => name === "react" ? react : require(name), document, window,
     performance: { now: () => clock }, crypto: { randomUUID: () => `ui-session-${++id}` },
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : [wall])); } static now() { return wall; } },
     localStorage: { getItem: (key) => data.get(key) ?? null,
@@ -91,7 +95,19 @@ function mount({ mode = "tu", due = false, newUser = false } = {}) {
     visibility(value) { document.visibilityState = value; documentListeners.get("visibilitychange")?.(); flush(); },
     leave() { cells.filter((cell) => cell?.effect).forEach((cell) => cell.cleanup?.()); cells = []; dirty = true; },
     return() { flush(); },
-    finish() { for (let count = 0; count < 23; count++) this.click("Suivant"); },
+    finish() {
+      for (let count = 0; count < 23; count++) {
+        const session = cells.find((cell) => typeof cell?.tick === "function");
+        const wasRunning = session.getState().running;
+        this.click("Suivant");
+        if (["transition", "hydration"].includes(session.getState().phase)) {
+          const running = session.getState().running;
+          if (!running) session.toggle();
+          this.advance(session.getState().remaining * 1000);
+          if (!wasRunning) { session.toggle(); dirty = true; flush(); }
+        }
+      }
+    },
   };
 }
 
@@ -109,6 +125,166 @@ test("UI et vrais effets : lancement unique, récupération et 3/2/1 puis exerci
   assert.ok(ui.text().includes("Marche active sur place"));
   assert.ok(ui.text().includes("Exercice 2 / 12"));
   assert.doesNotMatch(ui.text(), /Récupération/);
+});
+
+for (const dev of [false, true]) for (const paused of [false, true]) for (const target of [1, 2, 5, 6, 8]) {
+  test(`UI Suivant ${dev ? "développement" : "production"}, phase ${target}, pause ${paused}`, () => {
+    const ui = mount({ dev }); ui.click("En forme"); ui.click("Démarrer");
+    for (let step = 0; step <= target; step++) {
+      ui.advance(workoutSteps[step].seconds * 1000); ui.advance(15_000);
+      if (step < target && getWorkoutTransition(workoutSteps, step)) ui.advance(7000);
+    }
+    const phase = target === 8 ? "hydration" : "transition";
+    const duration = target === 8 ? 10 : 7;
+    assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).phase, phase);
+    if (paused) ui.click("Pause");
+    const buttons = ui.nodes().filter(n => n.type === "button");
+    assert.equal(buttons.length, dev ? 2 : 1);
+    const next = buttons.find(n => n.props.children.join("") === "Suivant");
+    assert.equal(!!next, dev);
+    if (dev) {
+      ui.click("Suivant");
+      const state = JSON.parse(ui.data.get(DRAFT_KEY));
+      assert.equal(state.phase, "exercise"); assert.equal(state.step, target + 1);
+      assert.equal(state.remaining, workoutSteps[target + 1].seconds);
+      assert.ok(ui.text().includes(workoutSteps[target + 1].name));
+      assert.ok(ui.text().includes(paused ? "Reprendre" : "Pause"));
+      if (paused) {
+        ui.advance(60_000); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, state.remaining);
+        ui.click("Reprendre");
+      }
+      ui.advance(1000);
+      assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, state.remaining - 1);
+    } else {
+      const remaining = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
+      assert.equal(remaining, duration - (paused ? 0.4 : 0));
+      if (paused) {
+        ui.advance(60_000); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, remaining);
+        ui.click("Reprendre");
+      }
+      ui.advance(remaining * 1000 - 1); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).phase, phase);
+      ui.advance(1); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).step, target + 1);
+    }
+    ui.leave();
+  });
+}
+
+for (const mode of ["tu", "vous"]) for (const target of [1, 2, 5, 6]) {
+  test(`UI transition ${target}/${mode} : titre, consigne, bonne illustration et prochain exercice sans chrono ni démo`, () => {
+    const ui = mount({ mode }); ui.click("En forme"); ui.click("Démarrer");
+    for (let step = 0; step <= target; step++) {
+      ui.advance(workoutSteps[step].seconds * 1000);
+      assert.ok(ui.text().includes("Récupération"));
+      ui.advance(15_000);
+      if (step < target && getWorkoutTransition(workoutSteps, step)) ui.advance(7000);
+    }
+    const transition = getWorkoutTransition(workoutSteps, target);
+    const message = getPersonalizedTexts({ addressMode: mode }).transitionMessage(transition.message);
+    assert.ok(ui.text().includes(message));
+    const title = mode === "vous" ? "Préparez-vous" : "Prépare-toi";
+    const next = workoutSteps[target + 1].name;
+    assert.ok(ui.text().includes(title));
+    assert.ok(ui.text().includes("Prochain exercice :"));
+    assert.ok(ui.text().includes(next));
+    assert.ok(ui.text().indexOf(title) < ui.text().indexOf(message));
+    assert.ok(ui.text().indexOf(message) < ui.text().indexOf("Prochain exercice :"));
+    const slot = ui.nodes().find((node) => node.props["data-transition-illustration"] === transition.message);
+    const assets = {
+      1: "coach-preparation-chaise.png", 2: "coach-appui-mur.png",
+      5: "coach-assise-chaise.png", 6: "coach-releve-chaise.png",
+    };
+    assert.ok(slot); assert.equal(slot.type, "img");
+    assert.equal(slot.props.src, `/coach/transitions/${assets[target]}`);
+    assert.ok(slot.props.alt.startsWith("Coach Antoine"));
+    const png = readFileSync(new URL(`../public/coach/transitions/${assets[target]}`, import.meta.url));
+    assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(ui.nodes().filter((node) => node.type === "img").length, 1);
+    assert.equal(ui.nodes().filter((node) => node.type === "svg").length, 0);
+    const forbidden = ui.nodes().filter((node) => /(?:timer|countdown|progress-track|exercise-discovery|coach-avatar)/.test(node.props.className ?? ""));
+    assert.equal(forbidden.length, 0);
+    assert.equal(ui.nodes().filter((node) => node.type === "button").length, 1);
+    assert.ok(ui.text().includes("Pause"));
+    assert.doesNotMatch(ui.text(), /[0-9]|Récupération|Objectif|Suivant|Consigne et démo/);
+    ui.advance(2000); ui.click("Pause");
+    const paused = JSON.parse(ui.data.get(DRAFT_KEY));
+    assert.equal(paused.phase, "transition");
+    assert.equal(paused.remaining, 4.6); // Le clic intervient 400 ms après l'avance.
+    assert.ok(ui.text().includes("Reprendre"));
+    ui.advance(60_000);
+    assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, paused.remaining);
+    ui.click("Reprendre");
+    assert.ok(ui.text().includes("Pause"));
+    assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, paused.remaining);
+    ui.advance(1000); ui.visibility("hidden");
+    const interrupted = JSON.parse(ui.data.get(DRAFT_KEY));
+    assert.ok(Math.abs(interrupted.remaining - 3.6) < 1e-7);
+    ui.advance(60_000); ui.visibility("visible");
+    assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, interrupted.remaining);
+    ui.click("REPRENDRE LA SÉANCE");
+    assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, interrupted.remaining);
+    assert.ok(ui.text().includes("Pause"));
+    ui.advance(interrupted.remaining * 1000 - 1); assert.ok(ui.text().includes(message));
+    ui.advance(1);
+    assert.ok(ui.text().includes(workoutSteps[target + 1].name));
+    assert.ok(ui.text().includes("Temps restant de l’exercice"));
+    ui.leave();
+  });
+}
+
+for (const mode of ["tu", "vous"]) test(`UI hydratation ${mode} : dialogue, image, silence visuel et pauses`, () => {
+  const ui = mount({ mode }); ui.click("En forme"); ui.click("Démarrer");
+  for (let step = 0; step <= 8; step++) {
+    ui.advance(workoutSteps[step].seconds * 1000);
+    assert.ok(ui.text().includes("Récupération"));
+    ui.advance(15_000);
+    if (getWorkoutTransition(workoutSteps, step)) ui.advance(7000);
+  }
+  const message = mode === "vous"
+    ? "Moi, j’en profite pour boire un peu… Vous pouvez en faire autant si vous voulez."
+    : "Moi, j’en profite pour boire un peu… Tu peux en faire autant si tu veux.";
+  assert.ok(ui.text().includes(message));
+  assert.ok(ui.text().includes("Prochain exercice :Ouverture de la poitrine"));
+  assert.doesNotMatch(ui.text(), /Prépare|[0-9]|Récupération|Objectif|Suivant/);
+  assert.equal(ui.nodes().filter(n => n.type === "h1" || /timer|countdown/.test(n.props.className ?? "")).length, 0);
+  const img = ui.nodes().find(n => n.type === "img");
+  assert.equal(img.props.src, "/coach/transitions/coach-hydratation.png");
+  assert.equal(img.props.className, "transition-illustration");
+  const png = readFileSync(new URL("../public/coach/transitions/coach-hydratation.png", import.meta.url));
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  ui.advance(2000); ui.click("Pause");
+  const paused = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
+  ui.advance(60_000); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, paused);
+  ui.click("Reprendre"); ui.advance(1000); ui.visibility("hidden");
+  const interrupted = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
+  ui.advance(60_000); ui.visibility("visible"); ui.click("REPRENDRE LA SÉANCE");
+  ui.advance(interrupted * 1000 - 1); assert.ok(ui.text().includes(message));
+  ui.advance(1); assert.ok(ui.text().includes("Temps restant de l’exercice"));
+  assert.ok(ui.text().includes("Ouverture de la poitrine")); ui.leave();
+});
+
+test("UI première transition atteinte par Suivant avant Démarrer : départ automatique sans Reprendre", () => {
+  const ui = mount(); ui.click("En forme");
+  for (let count = 0; count < 4; count++) ui.click("Suivant");
+  assert.ok(ui.text().includes("Installe-toi sur la chaise."));
+  assert.doesNotMatch(ui.text(), /Reprendre/);
+  ui.advance(6999); assert.ok(ui.text().includes("Installe-toi sur la chaise."));
+  ui.advance(1); assert.ok(ui.text().includes("Temps restant de l’exercice"));
+  assert.ok(ui.text().includes("Assis-debout avec chaise"));
+  assert.ok(ui.text().includes("Pause"));
+  ui.leave();
+});
+
+test("UI transition : interruption/reprise conserve les sept secondes sans saut", () => {
+  const ui = mount(); ui.click("En forme"); ui.click("Démarrer");
+  ui.advance(60_000 + 15_000 + 75_000 + 15_000);
+  ui.advance(2000); ui.visibility("hidden");
+  const paused = JSON.parse(ui.data.get(DRAFT_KEY));
+  ui.advance(60_000);
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, paused.remaining);
+  ui.visibility("visible"); ui.click("REPRENDRE LA SÉANCE"); ui.advance(paused.remaining * 1000 - 1);
+  assert.ok(ui.text().includes("Installe-toi sur la chaise."));
+  ui.advance(1); assert.ok(ui.text().includes("Assis-debout avec chaise"));
+  ui.leave();
 });
 
 for (const mode of ["tu", "vous"]) test(`UI interruption, navigation et reprise ${mode}`, () => {

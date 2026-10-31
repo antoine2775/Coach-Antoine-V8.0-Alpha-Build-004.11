@@ -25,6 +25,9 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   let clock = 0, id = 0;
   const openingTimers = new Map();
+  const workoutTimers = new Map();
+  dom.window.setInterval = (fn) => { const key = ++id; workoutTimers.set(key, fn); return key; };
+  dom.window.clearInterval = (key) => workoutTimers.delete(key);
   const storage = dom.window.localStorage;
   storage.setItem("coachAntoineSound", "off");
   if (oldDraft) {
@@ -98,6 +101,7 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
     assert.ok(!text().includes("PREMIÈRE DÉCOUVERTE"));
   }
   return { click, onboarding, storage, initialDraft, text, assertHome, assertSplash, leaveSplash, dom,
+    async advance(ms) { clock += ms; await act(async () => { [...workoutTimers.values()].forEach((fn) => fn()); }); },
     async close() { await act(async () => root.unmount()); dom.window.close(); delete globalThis.window; delete globalThis.document; } };
 }
 
@@ -129,6 +133,8 @@ for (const mode of ["tu", "vous"]) {
       assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
       // Tous les vrais écrans d'exercice/récupération et toutes les découvertes.
       for (let guard = 0; !ui.text().includes("Séance terminée !") && guard < 40; guard++) {
+        if (ui.dom.window.document.querySelector(".workout-hydration")) { await ui.advance(10_000); continue; }
+        if (ui.dom.window.document.querySelector(".workout-transition")) { await ui.advance(7000); continue; }
         await ui.click(ui.text().includes("Commencer l’exercice") ? "Commencer l’exercice" : "Suivant");
       }
       assert.ok(ui.text().includes("Séance terminée !"));

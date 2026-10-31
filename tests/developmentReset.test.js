@@ -144,10 +144,39 @@ test("zone temporaire absente hors mode développement, réglages conservés", a
     await ui.leaveSplash();
     assert.ok(!ui.text().includes("ZONE DE TEST"));
     assert.ok(!ui.text().includes("Remettre Coach Antoine à zéro"));
+    assert.ok(!ui.text().includes("Tester vibraphone"));
+    assert.ok(!ui.text().includes("Tester xylophone"));
     assert.ok(ui.text().includes("Mon niveau"));
     assert.ok(ui.text().includes("Riff de guitare"));
   } finally { await ui.close(); }
 });
+
+for (const label of ["Tester vibraphone"]) {
+test(`UI : ${label}, sans superposition ni changement des données, arrêt en quittant`, async () => {
+  const ui = await mount(seed());
+  let contexts = 0, closed = 0;
+  ui.dom.window.AudioContext = class {
+    constructor() { contexts++; this.state = "running"; this.currentTime = 0; this.destination = {}; }
+    createOscillator() { return { frequency: { setValueAtTime() {} }, connect() {}, start() {}, stop() {} }; }
+    createGain() { return { connect() {}, gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} } }; }
+    close() { closed++; return Promise.resolve(); }
+  };
+  try {
+    await ui.leaveSplash();
+    const before = ui.snapshot();
+    await ui.click(label);
+    for (const soundLabel of ["Tester vibraphone"]) {
+      const button = [...document.querySelectorAll("button")].find((node) => node.textContent === soundLabel);
+      assert.equal(button.disabled, true);
+      await act(async () => button.click());
+    }
+    assert.equal(contexts, 1);
+    assert.deepEqual(ui.snapshot(), before);
+    assert.ok(ui.text().includes("Remettre Coach Antoine à zéro"));
+  } finally { await ui.close(); }
+  assert.equal(closed, 1);
+});
+}
 
 test("UI : échec d'effacement signalé, aucun redémarrage, nouvelle tentative possible", async () => {
   const ui = await mount(seed());
