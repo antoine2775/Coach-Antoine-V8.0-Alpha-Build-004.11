@@ -1,10 +1,64 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import CoachAvatar from "./CoachAvatar";
 import { playRiff } from "../utils/sound";
+
+function stopIntroMusic(audio) {
+  if (!audio || !audio.hasAttribute("src")) return;
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+}
 
 export default function SplashScreen({ onDone, soundEnabled }) {
   const [glasses, setGlasses] = useState("eyes");
   const [line, setLine] = useState(0);
+  const introMusic = useRef(null);
+  const silenceTimer = useRef(null);
+  const playback = useRef({ started: false, finished: false, active: true });
+  const [musicStarted, setMusicStarted] = useState(false);
+
+  const finishMusic = () => {
+    const current = playback.current;
+    if (!current.active || !current.started || current.finished || silenceTimer.current !== null) return;
+    current.finished = true;
+    clearTimeout(silenceTimer.current);
+    silenceTimer.current = null;
+    stopIntroMusic(introMusic.current);
+    onDone();
+  };
+
+  const endMusic = () => {
+    const current = playback.current;
+    if (!current.active || !current.started || current.finished || silenceTimer.current !== null) return;
+    stopIntroMusic(introMusic.current);
+    silenceTimer.current = setTimeout(() => {
+      silenceTimer.current = null;
+      finishMusic();
+    }, 1500);
+  };
+
+  const startMusic = () => {
+    const current = playback.current;
+    if (!current.active || current.started || current.finished) return;
+    current.started = true;
+    setMusicStarted(true);
+    const audio = introMusic.current;
+    audio.src = `${import.meta.env.BASE_URL}audio/intro.mp3`;
+    try {
+      Promise.resolve(audio.play()).catch(finishMusic);
+    } catch { finishMusic(); }
+  };
+
+  useEffect(() => {
+    const audio = introMusic.current;
+    playback.current.active = true;
+    return () => {
+      playback.current.active = false;
+      clearTimeout(silenceTimer.current);
+      silenceTimer.current = null;
+      stopIntroMusic(audio);
+    };
+  }, []);
 
   useEffect(() => {
     if (soundEnabled) playRiff("start");
@@ -20,6 +74,7 @@ export default function SplashScreen({ onDone, soundEnabled }) {
 
   return (
     <div className="splash">
+      <audio ref={introMusic} onEnded={endMusic} onError={finishMusic} />
       <div className="splash__glow" />
 
       <CoachAvatar size={230} glasses={glasses} />
@@ -35,8 +90,8 @@ export default function SplashScreen({ onDone, soundEnabled }) {
       </div>
 
       {line >= 2 && (
-        <button className="splash__button" onClick={onDone}>
-          C'est parti !
+        <button className="splash__button" onClick={musicStarted ? endMusic : startMusic}>
+          {musicStarted ? "Passer la musique" : "C'est parti !"}
         </button>
       )}
     </div>

@@ -86,6 +86,8 @@ async function mount(entries, { dev = true, path = "coach" } = {}) {
   async function leaveSplash() {
     await act(async () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach((fn) => fn()); });
     await click("C'est parti !");
+    await click("Passer la musique");
+    await act(async () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach((fn) => fn()); });
   }
   return { dom, reloads, text, click, snapshot, leaveSplash,
     async close() { await act(async () => root.unmount()); dom.window.close(); delete globalThis.window; delete globalThis.document; } };

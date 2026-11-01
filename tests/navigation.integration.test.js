@@ -58,6 +58,8 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
   async function leaveSplash() {
     await act(async () => { const timers = [...openingTimers.values()]; openingTimers.clear(); timers.forEach((fn) => fn()); });
     await click("C'est parti !");
+    await click("Passer la musique");
+    await act(async () => { const timers = [...openingTimers.values()]; openingTimers.clear(); timers.forEach((fn) => fn()); });
   }
   function assertSplash() {
     assert.ok(document.querySelector(".splash"), "véritable composant SplashScreen affiché");
