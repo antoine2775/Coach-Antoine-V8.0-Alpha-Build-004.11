@@ -12,8 +12,23 @@ function Back({ onClick }) {
   return <button type="button" className="secondary-button" onClick={onClick}>Retour</button>;
 }
 
+function playIntroductionAudio(audio) {
+  if (!audio) return;
+  audio.src = `${import.meta.env.BASE_URL}audio/intro-coach-antoine.mp3`;
+  try {
+    Promise.resolve(audio.play()).catch(() => { /* La lecture automatique peut être bloquée par le navigateur. */ });
+  } catch { /* Un échec audio ne bloque pas l’introduction. */ }
+  // React 19 appelle ce nettoyage dès que l’élément quitte l’écran.
+  return () => {
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+  };
+}
+
 function Introduction({ submit, profile }) {
   return <>
+    <audio ref={playIntroductionAudio} />
     <h2>Bonjour, moi c’est Coach Antoine.</h2>
     <Paragraphs texts={EARLY_MESSAGES.tu.introduction} />
     <div className="onboarding-actions">
