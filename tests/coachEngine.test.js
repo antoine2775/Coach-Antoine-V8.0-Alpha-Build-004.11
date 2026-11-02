@@ -408,7 +408,8 @@ test("Garage réel : prénom, contextes, variantes, boutons et aperçu sans écr
     click("Tester la sélection avec silence possible");
     click("Afficher une phrase");
   }
-  const buttons = nodes(tree).filter(n => n.type === "button" && !text(n).includes("riff") && text(n) !== "×");
+  assert.ok(!text(tree).includes("Tester le riff"));
+  const buttons = nodes(tree).filter(n => n.type === "button" && text(n) !== "×");
   for (const button of buttons) { button.props.onClick(); render(); }
   assert.equal(store.writes(), 0);
   assert.deepEqual([...store.data], before);

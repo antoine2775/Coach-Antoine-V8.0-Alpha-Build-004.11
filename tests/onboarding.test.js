@@ -348,7 +348,7 @@ test("splash neutre : aucun prénom supposé ni salutation genrée", () => {
   // Fige uniquement l'avancement visuel du splash à sa dernière ligne.
   const react = { ...React, useState: (initial) => [initial === 0 ? 2 : initial, () => {}] };
   vm.runInNewContext(uiCode, { module, require: (name) => name === "react" ? react : require(name) });
-  const html = renderToStaticMarkup(React.createElement(module.exports.SplashScreen, { onDone() {}, soundEnabled: false }));
+  const html = renderToStaticMarkup(React.createElement(module.exports.SplashScreen, { onDone() {} }));
   assert.match(html, /Bienvenue !/);
   assert.doesNotMatch(html, /Un moment pour bouger/);
   assert.match(html, /Bouger quelques minutes, se sentir bien longtemps\./);

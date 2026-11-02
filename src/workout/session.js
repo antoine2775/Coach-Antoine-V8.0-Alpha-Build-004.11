@@ -18,7 +18,7 @@ const displayedSeconds = (value) => Math.ceil(Math.max(0, value - 1e-7));
 // passent par les mêmes transitions. React n'est que l'affichage.
 export function createWorkoutSession({ storage, now = () => performance.now(),
   wallNow = () => Date.now(), uuid = createWorkoutId,
-  sound = () => {}, countdownSound = () => {}, steps = workoutSteps, config = WORKOUT_CONFIG } = {}) {
+  countdownSound = () => {}, steps = workoutSteps, config = WORKOUT_CONFIG } = {}) {
   let state = empty();
   let anchor = null;
   let lastNext = -Infinity;
@@ -154,7 +154,6 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     // Outbox distincte de l'historique : permet un retry après réouverture.
     checkpoint(true);
     save();
-    try { if (storage.getItem("coachAntoineSound") !== "off") sound("finish"); } catch { /* audio facultatif */ }
   }
   function transition(early = false) {
     if (state.phase === "exercise") {

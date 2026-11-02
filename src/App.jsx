@@ -55,7 +55,7 @@ export function AppShell() {
     // Préparer la destination après le splash, sans afficher Home à la sortie.
     navigate("/", { replace: true });
   }, [navigate]);
-  if (showSplash) return <SplashScreen onDone={close} soundEnabled={soundEnabled} />;
+  if (showSplash) return <SplashScreen onDone={close} />;
   return <UserProfileContext.Provider value={{ ...userProfile, openSplash }}>
     <AppRoutes soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled} />
   </UserProfileContext.Provider>;

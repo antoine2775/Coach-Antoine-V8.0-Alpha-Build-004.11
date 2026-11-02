@@ -11,25 +11,24 @@ const require = createRequire(import.meta.url);
 const base = "/Coach-Antoine-V8.0-Alpha-Build-004.11/";
 const code = buildSync({
   entryPoints: ["src/components/SplashScreen.jsx"], bundle: true, write: false,
-  platform: "node", format: "cjs", external: ["react", "../utils/sound"],
+  platform: "node", format: "cjs", external: ["react"],
   define: { "import.meta.env.BASE_URL": JSON.stringify(base) },
 }).outputFiles[0].text;
 
-async function mount({ play = () => Promise.resolve(), strict = false, soundEnabled = false } = {}) {
+async function mount({ play = () => Promise.resolve(), strict = false } = {}) {
   const dom = new JSDOM('<div id="root"></div>', { url: `https://example.test${base}` });
   const previous = { window: globalThis.window, document: globalThis.document,
     act: globalThis.IS_REACT_ACT_ENVIRONMENT };
   globalThis.window = dom.window; globalThis.document = dom.window.document;
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-  const calls = [], riffs = [], timers = new Map();
+  const calls = [], timers = new Map();
   let timerId = 0, disposed = false, done = 0;
   const media = dom.window.HTMLMediaElement.prototype;
   media.play = function () { calls.push({ method: "play", audio: this, src: this.getAttribute("src") }); return play(); };
   media.pause = function () { calls.push({ method: "pause", audio: this }); };
   media.load = function () { calls.push({ method: "load", audio: this }); };
   const module = { exports: {} };
-  vm.runInNewContext(code, { module, require: name => name.includes("utils/sound")
-    ? { playRiff: kind => riffs.push(kind) } : require(name),
+  vm.runInNewContext(code, { module, require,
     setTimeout: (fn, ms) => { const id = ++timerId; timers.set(id, { fn, ms }); return id; },
     clearTimeout: id => timers.delete(id),
   });
@@ -37,12 +36,12 @@ async function mount({ play = () => Promise.resolve(), strict = false, soundEnab
   const onDone = () => { done++; calls.push({ method: "done" }); };
   async function render() {
     await act(async () => {
-      const content = React.createElement(module.exports.default, { onDone, soundEnabled });
+      const content = React.createElement(module.exports.default, { onDone });
       root.render(strict ? React.createElement(React.StrictMode, null, content) : content);
     });
   }
   await render();
-  return { calls, riffs, timers, document: dom.window.document, render, done: () => done,
+  return { calls, timers, document: dom.window.document, render, done: () => done,
     async advance(ms) {
       await act(async () => {
         for (const [id, timer] of [...timers]) {
@@ -209,18 +208,6 @@ test("accueil : quitter l’écran sans cliquer arrête la musique et nettoie le
   assert.deepEqual(h.calls, []);
   assert.equal(audio.getAttribute("src"), null); assert.equal(h.timers.size, 0);
   assert.equal(h.done(), 0);
-});
-
-test("accueil : aucun jingle synthétique, quelle que soit la préférence sonore", async () => {
-  for (const soundEnabled of [false, true]) {
-    const h = await mount({ soundEnabled });
-    try {
-      assert.deepEqual(h.riffs, []);
-      assert.equal(h.calls.length, 0);
-      await h.revealButton(); await h.click();
-      assert.equal(h.calls[0].src, `${base}audio/intro.mp3`);
-    } finally { await h.dispose(); }
-  }
 });
 
 test("accueil : StrictMode reste silencieux au montage et ne double pas la lecture", async () => {

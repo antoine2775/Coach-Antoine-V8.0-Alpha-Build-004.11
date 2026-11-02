@@ -157,10 +157,10 @@ test("séance entièrement automatique : 915 s actives, 11 récupérations, sauv
   assert.equal(h.state().feedbackScreen, "general");
   assert.equal(readHistory(h.storage).history[0].activeSeconds, 915);
   assert.equal(getStatistics(readHistory(h.storage)).cards[0].value, 1);
-  assert.deepEqual(h.sounds, ["finish"]);
+  assert.deepEqual(h.sounds, []);
   h.session.tick(); h.session.next(); h.session.save(); h.session.save();
   assert.equal(readHistory(h.storage).history.length, 1);
-  assert.deepEqual(h.sounds, ["finish"]);
+  assert.deepEqual(h.sounds, []);
 });
 
 for (const [elapsed, expected] of [[49_000, 1], [49_500, 1], [50_000, 0], [55_000, 0]]) {
@@ -382,7 +382,7 @@ test("réponse exactement à l'expiration ignorée ; fermeture au feedback conse
   assert.equal(h.state().feedbackScreen, "close");
   assert.equal(JSON.parse(h.data.get(FEEDBACK_KEY)).sessions[0].response, null);
   h.reopen();
-  assert.equal(readHistory(h.storage).history.length, 1); assert.deepEqual(h.sounds, ["finish"]);
+  assert.equal(readHistory(h.storage).history.length, 1); assert.deepEqual(h.sounds, []);
 });
 
 test("réouverture pendant feedback : délai initial conservé et timeout hors application", () => {
@@ -403,7 +403,7 @@ test("retry après quota : outbox restaurée, même id, même durée, aucun son 
   h.reopen(); assert.equal(h.state().saveStatus, "error");
   h.failures.delete(HISTORY_KEY); h.session.save(); h.session.save();
   assert.deepEqual(readHistory(h.storage).history, [finished]);
-  assert.equal(h.state().saveStatus, "saved"); assert.deepEqual(h.sounds, ["finish"]);
+  assert.equal(h.state().saveStatus, "saved"); assert.deepEqual(h.sounds, []);
   assert.equal(JSON.parse(h.data.get(FEEDBACK_KEY)).sessions.length, 1);
 });
 
@@ -607,7 +607,7 @@ test("réponse du Coach : délai distinct de 7 secondes, sans transition prémat
   h.advance(1); assert.equal(h.state().feedbackScreen, "close");
   assert.equal(h.state().acknowledgementDeadline, null);
   assert.equal(h.data.get(HISTORY_KEY), history); assert.equal(h.data.get(FEEDBACK_KEY), feedback);
-  assert.equal(h.data.get("coachAntoineRestDuration"), "20"); assert.deepEqual(h.sounds, ["finish"]);
+  assert.equal(h.data.get("coachAntoineRestDuration"), "20"); assert.deepEqual(h.sounds, []);
 });
 
 test("délai de réponse paramétrable, indépendant du timeout de questionnaire", () => {
@@ -630,7 +630,7 @@ test("réouverture pendant la réponse : échéance conservée, aucun nouveau d�
   assert.equal(h.state().feedbackScreen, "acknowledgement"); assert.equal(h.state().acknowledgementDeadline, deadline);
   h.advance(5000, false); h.reopen();
   assert.equal(h.state().feedbackScreen, "close"); assert.equal(readHistory(h.storage).history.length, 1);
-  assert.deepEqual(h.sounds, ["finish"]);
+  assert.deepEqual(h.sounds, []);
 });
 
 test("absence de feedback, OUI et timeout : congé directement sans attente de réponse", () => {

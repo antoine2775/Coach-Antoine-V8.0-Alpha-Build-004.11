@@ -146,7 +146,7 @@ test("séance entière : 28 secondes de transitions et 10 d’hydratation, stati
   h.advance(1);
   assert.equal(h.state().phase, "finished");
   assert.equal(h.state().activeSeconds, 915);
-  assert.deepEqual(h.sounds, ["finish"]);
+  assert.deepEqual(h.sounds, []);
 });
 
 test("première démo conservée, présentée seulement après la transition complète", () => {

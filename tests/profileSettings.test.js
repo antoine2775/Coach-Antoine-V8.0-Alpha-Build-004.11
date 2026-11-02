@@ -218,8 +218,8 @@ test("page Coach : trois blocs intégrés, contrôles sonores et voix existants 
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, null, React.createElement(UserProfileContext.Provider,
     { value: { profile: completedProfile(), updateUserProfile() {} } },
     React.createElement(Coach, { soundEnabled: true, setSoundEnabled() {} }))));
-  for (const text of ["Mon niveau", "Mon matériel", "Comment Coach Antoine me parle", "Riff de guitare",
-    "Tester le riff", "Voix du Coach", "Prévue dans une prochaine version", "Présentation", "À propos"]) {
+  for (const text of ["Mon niveau", "Mon matériel", "Comment Coach Antoine me parle", "Sons de la séance",
+    "Décomptes et signaux sonores", "Voix du Coach", "Prévue dans une prochaine version", "Présentation", "À propos"]) {
     assert.ok(html.includes(text));
   }
   assert.match(html, /type="checkbox" checked=""/);

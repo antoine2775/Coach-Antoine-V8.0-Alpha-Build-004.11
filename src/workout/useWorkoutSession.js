@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { playRiff } from "../utils/sound.js";
 import { createVibraphonePlayer } from "../utils/vibraphone.js";
 import { attachWorkoutSession, createWorkoutSession } from "./session.js";
 
@@ -12,7 +11,7 @@ const browserStorage = {
 
 export function useWorkoutSession() {
   const [vibraphone] = useState(() => createVibraphonePlayer());
-  const [session] = useState(() => createWorkoutSession({ storage: browserStorage, sound: playRiff, countdownSound: () => vibraphone.play() }));
+  const [session] = useState(() => createWorkoutSession({ storage: browserStorage, countdownSound: () => vibraphone.play() }));
   const [, refresh] = useState(0);
   useEffect(() => attachWorkoutSession(session, {
     document, window,

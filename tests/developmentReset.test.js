@@ -97,7 +97,7 @@ test("UI : premier clic ouvre seulement la confirmation, Annuler conserve tout",
   const ui = await mount(seed());
   try {
     await ui.leaveSplash();
-    for (const label of ["Mon niveau", "Mon matériel", "Comment Coach Antoine me parle", "Riff de guitare", "Voix du Coach"]) assert.ok(ui.text().includes(label));
+    for (const label of ["Mon niveau", "Mon matériel", "Comment Coach Antoine me parle", "Sons de la séance", "Voix du Coach"]) assert.ok(ui.text().includes(label));
     assert.ok(document.querySelector('input[name="profile-level"][value="tonique"]').checked);
     assert.ok(document.querySelector('input[name="profile-address"][value="vous"]').checked);
     const before = ui.snapshot();
@@ -149,7 +149,7 @@ test("zone temporaire absente hors mode développement, réglages conservés", a
     assert.ok(!ui.text().includes("Tester vibraphone"));
     assert.ok(!ui.text().includes("Tester xylophone"));
     assert.ok(ui.text().includes("Mon niveau"));
-    assert.ok(ui.text().includes("Riff de guitare"));
+    assert.ok(ui.text().includes("Sons de la séance"));
   } finally { await ui.close(); }
 });
 

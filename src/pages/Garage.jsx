@@ -4,7 +4,6 @@ import CoachBubble from "../components/CoachBubble";
 import { listCoachCategories, listPhraseEntries, getCoachPhrase } from "../coach";
 import { useUserProfile } from "../context/UserProfileContext";
 import { PREVIEW_CONTEXTS } from "../coach/previewContexts.js";
-import { playRiff } from "../utils/sound";
 
 export default function Garage() {
   const { profile } = useUserProfile();
@@ -33,6 +32,5 @@ export default function Garage() {
       {!msg && <p role="status">Aucune phrase affichée.</p>}
     </section>
     <section className="card"><h2>Phrases de la catégorie</h2><div className="garage-phrases">{phrases.map(p => <button className="garage-phrase" key={p.id} disabled={!p.text} onClick={() => setMsg(p.text)}><small>{p.id} · {p.frequency}</small><br />{p.text || p.tu}</button>)}</div></section>
-    <section className="card"><h2>Outils</h2><div className="garage-tools"><button className="secondary-button" onClick={() => playRiff("start")}>🎸 Tester le riff</button></div></section>
   </>;
 }
