@@ -106,6 +106,33 @@ test("accueil : premier clic lance uniquement le MP3 et remplace le bouton", asy
   } finally { await h.dispose(); }
 });
 
+for (const ending of ["naturelle", "passer"]) test(`accueil : phrase discrète pendant la musique et le silence après ${ending}`, async () => {
+  const h = await mount();
+  const message = "La musique complète est disponible dans « Le Coach ».";
+  try {
+    await h.revealButton();
+    assert.equal(h.document.body.textContent.includes(message), false);
+    await h.click();
+    const button = h.document.querySelector("button");
+    const notice = button.previousElementSibling;
+    assert.equal(notice.tagName, "P");
+    assert.equal(notice.textContent.trim(), message);
+    assert.equal(notice.querySelector("a, button, [role='link'], [role='button']"), null);
+    assert.equal(notice.hasAttribute("tabindex"), false);
+    assert.equal(notice.style.color, "rgba(255, 255, 255, 0.6)");
+    assert.equal(notice.style.fontSize, "0.8rem");
+    assert.equal(notice.style.fontWeight, "400");
+    if (ending === "naturelle") await h.event("ended"); else await h.click();
+    assert.equal(h.document.body.contains(notice), true);
+    await h.advance(1499);
+    assert.equal(h.done(), 0);
+    assert.equal(h.document.body.contains(notice), true);
+    await h.advance(1); assert.equal(h.done(), 1);
+    await h.dispose();
+    assert.equal(h.document.body.textContent.includes(message), false);
+  } finally { await h.dispose(); }
+});
+
 test("accueil : fin naturelle, exactement 1,5 seconde de silence puis navigation unique", async () => {
   const h = await mount();
   try {
@@ -184,11 +211,11 @@ test("accueil : quitter l’écran sans cliquer arrête la musique et nettoie le
   assert.equal(h.done(), 0);
 });
 
-test("accueil : le riff existant conserve sa condition soundEnabled", async () => {
+test("accueil : aucun jingle synthétique, quelle que soit la préférence sonore", async () => {
   for (const soundEnabled of [false, true]) {
     const h = await mount({ soundEnabled });
     try {
-      assert.deepEqual(h.riffs, soundEnabled ? ["start"] : []);
+      assert.deepEqual(h.riffs, []);
       assert.equal(h.calls.length, 0);
       await h.revealButton(); await h.click();
       assert.equal(h.calls[0].src, `${base}audio/intro.mp3`);

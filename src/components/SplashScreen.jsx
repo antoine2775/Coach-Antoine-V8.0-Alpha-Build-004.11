@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import CoachAvatar from "./CoachAvatar";
-import { playRiff } from "../utils/sound";
 
 function stopIntroMusic(audio) {
   if (!audio || !audio.hasAttribute("src")) return;
@@ -9,7 +8,7 @@ function stopIntroMusic(audio) {
   audio.load();
 }
 
-export default function SplashScreen({ onDone, soundEnabled }) {
+export default function SplashScreen({ onDone }) {
   const [glasses, setGlasses] = useState("eyes");
   const [line, setLine] = useState(0);
   const introMusic = useRef(null);
@@ -61,8 +60,6 @@ export default function SplashScreen({ onDone, soundEnabled }) {
   }, []);
 
   useEffect(() => {
-    if (soundEnabled) playRiff("start");
-
     const t = [
       setTimeout(() => setGlasses("hair"), 900),
       setTimeout(() => setLine(1), 1250),
@@ -70,7 +67,7 @@ export default function SplashScreen({ onDone, soundEnabled }) {
     ];
 
     return () => t.forEach(clearTimeout);
-  }, [soundEnabled]);
+  }, []);
 
   return (
     <div className="splash">
@@ -88,6 +85,12 @@ export default function SplashScreen({ onDone, soundEnabled }) {
       <div className="splash__message" aria-live="polite">
         {line >= 1 && <strong>Bienvenue !</strong>}
       </div>
+
+      {musicStarted && (
+        <p style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: ".8rem", fontWeight: 400, margin: "0 0 10px", maxWidth: "34ch", zIndex: 1 }}>
+          La musique complète est disponible dans « Le Coach ».
+        </p>
+      )}
 
       {line >= 2 && (
         <button className="splash__button" onClick={musicStarted ? endMusic : startMusic}>
