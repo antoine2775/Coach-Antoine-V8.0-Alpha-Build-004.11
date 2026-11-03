@@ -25,6 +25,9 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   let clock = 0, id = 0;
   const openingTimers = new Map();
+  const replyTimers = new Map();
+  dom.window.setTimeout = (fn) => { const key = ++id; replyTimers.set(key, fn); return key; };
+  dom.window.clearTimeout = (key) => replyTimers.delete(key);
   const workoutTimers = new Map();
   dom.window.setInterval = (fn) => { const key = ++id; workoutTimers.set(key, fn); return key; };
   dom.window.clearInterval = (key) => workoutTimers.delete(key);
@@ -54,6 +57,11 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
     assert.equal(node.disabled ?? false, false);
     clock += 400;
     await act(async () => node.click());
+    if (["En forme", "Petite forme", "Pleine forme"].includes(label)) {
+      while (replyTimers.size) await act(async () => {
+        for (const [key, fn] of [...replyTimers]) if (replyTimers.delete(key)) fn();
+      });
+    }
   }
   async function leaveSplash() {
     await act(async () => { const timers = [...openingTimers.values()]; openingTimers.clear(); timers.forEach((fn) => fn()); });

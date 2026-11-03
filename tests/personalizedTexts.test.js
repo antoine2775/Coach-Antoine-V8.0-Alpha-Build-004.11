@@ -111,6 +111,8 @@ test("douze consignes explicites en vous et données temporelles conservées", (
 
 // Le vrai Workout est exécuté avec des hooks isolés ; aucune horloge ni donnée du navigateur.
 function workoutUI(profile) {
+  const replyTimers = new Map();
+  let replyTimerId = 0;
   let cells = [], index = 0, tree, riffs = 0, clock = 0;
   const data = new Map([["coachAntoineSound", "off"], ["coachAntoineWorkoutFeedbackV1", JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: null, pendingReason: null, sessions: [] })]]);
   data.set(DISCOVERY_KEY, JSON.stringify(workoutSteps.map((step) => step.id)));
@@ -127,7 +129,9 @@ function workoutUI(profile) {
     localStorage: { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) },
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : [Date.parse("2026-10-18T10:00:00Z") + clock])); } static now() { return Date.parse("2026-10-18T10:00:00Z") + clock; } },
     crypto: { randomUUID: () => "test-session-6a" }, performance: { now: () => clock },
-    window: { AudioContext: class { constructor() { riffs++; throw Error("unexpected audio"); } } },
+    window: { setTimeout(fn) { replyTimers.set(++replyTimerId, fn); return replyTimerId; },
+      clearTimeout(id) { replyTimers.delete(id); },
+      AudioContext: class { constructor() { riffs++; throw Error("unexpected audio"); } } },
   });
   function expand(node) {
     if (node === null || typeof node !== "object") return node;
@@ -144,6 +148,12 @@ function workoutUI(profile) {
     const wasRunning = session?.getState().running;
     const node = nodes(tree).find((item) => item.type === "button" && text(item) === label);
     assert.ok(node, `bouton ${label}`); clock += 400; node.props.onClick(); render();
+    if (["En forme", "Petite forme", "Pleine forme"].includes(label)) {
+      while (replyTimers.size) {
+        for (const [id, fn] of [...replyTimers]) if (replyTimers.delete(id)) fn();
+        render();
+      }
+    }
     if (label === "Suivant" && ["transition", "hydration"].includes(session?.getState().phase)) {
       const running = session.getState().running;
       if (!running) session.toggle();

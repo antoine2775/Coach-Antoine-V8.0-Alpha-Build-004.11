@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import CoachAvatar from "../components/CoachAvatar";
 import ExerciseAnimation from "../components/ExerciseAnimation";
@@ -7,6 +7,7 @@ import { getPersonalizedTexts } from "../utils/personalizedTexts";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useWorkoutSession } from "../workout/useWorkoutSession";
 import { FEEDBACK_OPTIONS, feedbackAnswers, isFeedbackComplete } from "../workout/feedback";
+import { speakDayFormReply } from "../utils/dayFormSpeech";
 
 const fmt = (value) => `${Math.floor(value / 60).toString().padStart(2, "0")}:${(value % 60).toString().padStart(2, "0")}`;
 const TRANSITION_IMAGES = {
@@ -20,6 +21,20 @@ export default function Workout() {
   const { profile, openSplash } = useUserProfile();
   const texts = getPersonalizedTexts(profile);
   const { state: s, act } = useWorkoutSession();
+  const [dayFormReply, setDayFormReply] = useState("");
+  const [replyControl] = useState(() => ({ pending: false, dispose: null }));
+  useEffect(() => () => replyControl.dispose?.(), [replyControl]);
+  function chooseDayForm(value) {
+    if (replyControl.pending) return;
+    replyControl.pending = true;
+    const reply = texts.dayFormReply[value];
+    setDayFormReply(reply);
+    replyControl.dispose = speakDayFormReply(reply, () => {
+      replyControl.pending = false;
+      setDayFormReply("");
+      act("chooseDayForm", value, profile?.selectedLevel ?? null);
+    });
+  }
   const cur = workoutSteps[s.step];
   const warning = s.draftError && <p role="alert">{s.draftError}</p>;
 
@@ -38,12 +53,12 @@ export default function Workout() {
     </header>
     <section className="workout-card">
       <CoachAvatar size={180} />
-      <p>{texts.dayFormExplanation}</p>
+      <p role={dayFormReply ? "status" : undefined}>{dayFormReply || texts.dayFormExplanation}</p>
       {warning}
       {s.draftError ? <button className="secondary-button" onClick={() => act("abandon")}>NOUVELLE SÉANCE</button> :
-        <div className="workout-actions workout-choices day-form-choices">
+        !dayFormReply && <div className="workout-actions workout-choices day-form-choices">
           {[["high", "Pleine forme"], ["normal", "En forme"], ["low", "Petite forme"]].map(([value, label]) =>
-            <button key={value} className="secondary-button" aria-pressed={s.dayForm === value} onClick={() => act("chooseDayForm", value, profile?.selectedLevel ?? null)}>{label}</button>)}
+            <button key={value} className="secondary-button" aria-pressed={s.dayForm === value} onClick={() => chooseDayForm(value)}>{label}</button>)}
         </div>}
       <p className="safety-note">{texts.dayFormNote}</p>
     </section>

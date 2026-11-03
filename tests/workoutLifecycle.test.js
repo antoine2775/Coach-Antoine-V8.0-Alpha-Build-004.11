@@ -29,10 +29,11 @@ function mount({ mode = "tu", due = false, newUser = false, dev = false } = {}) 
   const data = new Map([["coachAntoineSound", "off"]]);
   if (due) data.set(FEEDBACK_KEY, JSON.stringify({ version: 1, sinceAsked: 2, lastLevel: "forme", pendingReason: null, sessions: [] }));
   if (!newUser) data.set(DISCOVERY_KEY, JSON.stringify(workoutSteps.map((step) => step.id)));
-  const timers = new Map(), documentListeners = new Map(), windowListeners = new Map(), failures = new Set();
+  const timers = new Map(), replyTimers = new Map(), documentListeners = new Map(), windowListeners = new Map(), failures = new Set();
   const document = { visibilityState: "visible", addEventListener: (name, fn) => documentListeners.set(name, fn),
     removeEventListener: (name) => documentListeners.delete(name) };
   const window = {
+    setTimeout(fn) { replyTimers.set(++id, fn); return id; }, clearTimeout(key) { replyTimers.delete(key); },
     addEventListener: (name, fn) => windowListeners.set(name, fn), removeEventListener: (name) => windowListeners.delete(name),
     setInterval(fn) { timers.set(++id, fn); return id; }, clearInterval(key) { timers.delete(key); },
   };
@@ -84,6 +85,14 @@ function mount({ mode = "tu", due = false, newUser = false, dev = false } = {}) 
     click(label) {
       const node = nodes(tree).find((item) => text(item) === label && typeof item.props.onClick === "function");
       assert.ok(node, `commande ${label}`); if (node.props.disabled) return; clock += 400; wall += 400; node.props.onClick(); flush();
+      // Ces tests du parcours aval passent le délai de secours vocal.
+      if (["En forme", "Petite forme", "Pleine forme"].includes(label)) {
+        while (replyTimers.size) {
+          const batch = [...replyTimers.entries()];
+          for (const [key, fn] of batch) if (replyTimers.delete(key)) fn();
+          flush();
+        }
+      }
     },
     change(label, group) {
       const node = nodes(tree).find((item) => item.type === "label" && text(item) === label && (!group || nodes(item).some((child) => child.props.name === "feedback-" + group)));

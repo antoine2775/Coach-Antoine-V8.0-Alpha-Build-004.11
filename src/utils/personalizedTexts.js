@@ -64,6 +64,11 @@ export function getPersonalizedTexts(profile) {
     program: vous ? "Coach Antoine va vous préparer la bonne séance pour aujourd’hui."
       : "Coach Antoine va te préparer la bonne séance pour aujourd’hui.",
     dayFormQuestion: vous ? "Comment vous sentez-vous aujourd’hui ?" : "Comment te sens-tu aujourd’hui ?",
+    dayFormReply: {
+      low: "D’accord, aujourd’hui on y va tranquillement.",
+      normal: "Parfait, on est parti pour la séance.",
+      high: "Super, alors on peut mettre un peu plus de tonus aujourd’hui.",
+    },
     dayFormExplanation: vous ? "Dites-moi simplement comment vous vous sentez. J’en tiendrai compte pour votre séance."
       : "J’en tiendrai compte pour ta séance.",
     dayFormNote: vous ? "Aujourd’hui ne définit pas votre niveau général. C’est simplement votre forme du jour."
