@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Play,
@@ -10,7 +10,8 @@ import {
 import CoachPresence from "../components/CoachPresence";
 import { getStatistics, readHistory } from "../utils/workoutHistory";
 import { useUserProfile } from "../context/UserProfileContext";
-import { getPersonalizedTexts } from "../utils/personalizedTexts";
+import { getWelcomePhrase } from "../coach";
+import { displayName } from "../utils/displayName";
 
 const programBlocks = [
   { label: "Mise en mouvement", icon: "🧍", description: "Préparer progressivement le corps." },
@@ -21,7 +22,16 @@ const programBlocks = [
 
 export default function Home() {
   const { profile } = useUserProfile();
-  const texts = getPersonalizedTexts(profile);
+  const [greeting, setGreeting] = useState(() => {
+    const name = displayName(profile?.firstName);
+    return name ? `Bonjour ${name} !` : "Bonjour !";
+  });
+  const greeted = useRef(false);
+  useEffect(() => {
+    if (greeted.current) return;
+    greeted.current = true;
+    setGreeting(getWelcomePhrase({ profile }));
+  }, [profile]);
   const nav = useNavigate();
   const statistics = getStatistics(readHistory());
   const statIcons = [CalendarDays, Timer, Clock];
@@ -31,8 +41,7 @@ export default function Home() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">COACH ANTOINE</p>
-          <h1>{texts.welcome}</h1>
-          <p className="hero-card__ready">{texts.ready}</p>
+          <h1>{greeting}</h1>
           <p className="hero-card__quote">
             « Le plus difficile, c'est de commencer. »
           </p>
@@ -52,12 +61,10 @@ export default function Home() {
       <section className="card">
         <div className="section-title" style={{ flexWrap: "wrap" }}>
           <div>
-            <p className="eyebrow">AUJOURD'HUI</p>
-            <h2>Programme du jour</h2>
+            <h2>Déroulé de la séance</h2>
           </div>
 
         </div>
-        <p className="muted" style={{ color: "#243B53", fontSize: "16px" }}>{texts.program}</p>
 
         <div className="program-list">
           {programBlocks.map((x) => (

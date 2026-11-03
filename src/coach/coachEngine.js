@@ -1,7 +1,8 @@
-import { COACH_PHRASE_IDS, PHRASE_CATALOG, renderCoachPhrase } from "./phrases.js";
+import { COACH_PHRASE_IDS, PHRASE_CATALOG, renderCoachPhrase, HOME_WELCOME_PHRASES, HOME_RETURN_PHRASE } from "./phrases.js";
+import { displayName } from "../utils/displayName.js";
 import { COACH_CATEGORIES as C } from "./categories.js";
 import { isPhraseCompatible } from "./phraseContexts.js";
-import { daysSince, loadCoachMemory, markVisit, rememberPhrase, updateCoachMemory, hasSessionSpeechGroup } from "./coachMemory.js";
+import { loadCoachMemory, rememberPhrase, updateCoachMemory, hasSessionSpeechGroup } from "./coachMemory.js";
 
 // Réglages initiaux provisoires, ajustables après les essais réels.
 // recentWindow compte les dernières interventions, pas les séances écoulées.
@@ -70,11 +71,21 @@ export function getCoachPhrase(category, { profile, context = {}, preview = fals
   }
   return selected.text;
 }
-export function getWelcomePhrase(options = {}) {
+export function getWelcomePhrase({ profile, random = Math.random, now = Date.now(), preview = false, noWrite = false } = {}) {
   const memory = loadCoachMemory();
-  const days = daysSince(memory.lastVisitAt);
-  if (!options.preview && !options.noWrite) markVisit();
-  return getCoachPhrase(days !== null && days >= 3 ? C.RETURN : C.WELCOME, options);
+  const lastVisit = memory.lastVisitAt ? Date.parse(memory.lastVisitAt) : NaN;
+  const returning = Number.isFinite(lastVisit) && now - lastVisit >= 72 * 60 * 60 * 1000;
+  const selected = returning ? HOME_RETURN_PHRASE : pick(
+    HOME_WELCOME_PHRASES.filter(phrase => phrase.id !== memory.lastWelcomePhraseId), random);
+  const name = displayName(profile?.firstName);
+  const text = renderCoachPhrase(selected, profile).replace(" [Prénom]", name ? ` ${name}` : "");
+  // Une seule écriture ; le retour conserve la dernière variante normale.
+  // La salutation n'affecte pas la mémoire des interventions pendant la séance.
+  if (!preview && !noWrite) updateCoachMemory({
+    lastVisitAt: new Date(now).toISOString(),
+    ...(!returning ? { lastWelcomePhraseId: selected.id } : {}),
+  });
+  return text;
 }
 export function getFinishRitual(options = {}) {
   // Une seule sélection parmi les alternatives, jamais deux interventions.

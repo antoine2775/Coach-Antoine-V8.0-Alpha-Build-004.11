@@ -141,7 +141,7 @@ for (const status of ["loading", "invalid", "unsupported-version", "unavailable"
   });
 }
 
-for (const [route, expected] of [["/", "Programme du jour"], ["/seances", "Comment vous sentez-vous"],
+for (const [route, expected] of [["/", "Déroulé de la séance"], ["/seances", "Comment vous sentez-vous"],
   ["/progression", "Progression"], ["/carnet", "LE CARNET DU COACH"], ["/coach", "Réglages"]]) {
   test(`profil terminé : route ${route} préservée`, () => {
     const html = renderRoutes(stateFrom(storageWith(completedProfile())), route);
@@ -157,7 +157,7 @@ test("garde compatible avec le sous-chemin Vite", () => {
   assert.match(renderRoutes(stateFrom(storageWith(completedProfile())), `${base}/seances`, base), /Comment vous sentez-vous/);
 });
 
-for (const [choice, expected] of [["later", "Programme du jour"], ["now", "Comment vous sentez-vous"]]) {
+for (const [choice, expected] of [["later", "Déroulé de la séance"], ["now", "Comment vous sentez-vous"]]) {
   test(`sortie ${choice} : profil réellement finalisé, destination accessible après relecture`, () => {
     const profile = { ...completedProfile(), proposedLevel: "forme", selectedLevel: "forme",
       safetyConfirmed: true, onboardingCurrentStep: 20, onboardingCompleted: false };
@@ -175,7 +175,7 @@ for (const [choice, expected] of [["later", "Programme du jour"], ["now", "Comme
       for (const text of ["Petite forme", "En forme", "Pleine forme"]) assert.ok(html.includes(text));
       assert.doesNotMatch(html, /Suivant/);
     }
-    assert.match(renderRoutes(stateFrom(storage), "/"), /Programme du jour/);
+    assert.match(renderRoutes(stateFrom(storage), "/"), /Déroulé de la séance/);
   });
 }
 

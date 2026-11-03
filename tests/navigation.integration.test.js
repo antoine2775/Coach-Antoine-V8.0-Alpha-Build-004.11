@@ -97,7 +97,7 @@ async function setup({ oldDraft = false, withoutRandomUUID = false } = {}) {
     assert.equal(dom.window.location.pathname.replace(/\/$/, ""), base);
     assert.ok(text().includes("Bonjour Antoine !"));
     assert.ok(text().includes("Commencer la séance"));
-    assert.ok(text().includes("Programme du jour"));
+    assert.ok(text().includes("Déroulé de la séance"));
     assert.ok(!text().includes("AVANT DE COMMENCER"));
     assert.ok(!text().includes("Temps restant de l’exercice"));
     assert.ok(!text().includes("PREMIÈRE DÉCOUVERTE"));

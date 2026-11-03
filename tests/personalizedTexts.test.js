@@ -38,8 +38,9 @@ for (const addressMode of ["tu", "vous"]) for (const sex of ["male", "female"]) 
     const texts = getPersonalizedTexts(profile);
     const home = renderPage("Home", profile);
     assert.ok(home.includes("Bonjour Éloïse !"));
-    assert.ok(home.includes(sex === "female" ? "Prête ?" : "Prêt ?"));
-    assert.ok(home.includes(texts.program));
+    assert.doesNotMatch(home, /hero-card__ready/);
+    assert.ok(!home.includes(texts.program));
+    assert.ok(home.includes("Déroulé de la séance"));
     const workout = renderPage("Workout", profile);
     for (const text of [texts.dayFormQuestion, texts.dayFormExplanation, texts.dayFormNote, "Petite forme", "En forme", "Pleine forme"]) assert.ok(workout.includes(text));
     const progress = renderPage("Progress", profile);
@@ -224,7 +225,8 @@ test("changement de mode enregistré : nouvelles pages immédiatement cohérente
   for (const addressMode of ["vous", "tu"]) {
     assert.equal(updateProfile({ addressMode }, storage).status, "saved");
     const profile = readProfile(storage).profile;
-    assert.ok(renderPage("Home", profile).includes(getPersonalizedTexts(profile).program));
+    assert.ok(renderPage("Home", profile).includes(getPersonalizedTexts(profile).welcome));
+    assert.ok(!renderPage("Home", profile).includes(getPersonalizedTexts(profile).program));
     assert.ok(renderPage("Workout", profile).includes(getPersonalizedTexts(profile).dayFormQuestion));
     assert.ok(renderPage("Progress", profile).includes(getPersonalizedTexts(profile).journey));
     assert.ok(renderPage("Carnet", profile).includes(getPersonalizedTexts(profile).zzTop));

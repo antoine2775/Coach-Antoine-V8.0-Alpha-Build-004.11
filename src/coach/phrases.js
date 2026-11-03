@@ -4,6 +4,16 @@ import { displayName } from "../utils/displayName.js";
 // Catalogue éditorial V1 : ordre de validation, identifiants logiques indépendants
 // du mode d'adresse, des accords et des contextes de sélection.
 const phrase = (id, frequency, tu, vous = tu, extra = {}) => Object.freeze({ id, frequency, tu, vous, ...extra });
+// Salutations de l'Accueil : indépendantes des interventions générales du Coach.
+export const HOME_WELCOME_PHRASES = Object.freeze([
+  phrase("home-welcome-simple", "frequent", "Bonjour [Prénom] !"),
+  phrase("home-welcome-ready", "frequent", "Bonjour [Prénom] ! Prêt pour une bonne séance ?", undefined,
+    { tuFemale: "Bonjour [Prénom] ! Prête pour une bonne séance ?", vousFemale: "Bonjour [Prénom] ! Prête pour une bonne séance ?" }),
+  phrase("home-welcome-reunion", "frequent", "Bonjour [Prénom] ! On y va ?"),
+]);
+export const HOME_RETURN_PHRASE = phrase("home-return-pleasure", "frequent",
+  "Bonjour [Prénom] ! Je suis content de te retrouver.");
+
 export const PHRASE_CATALOG = Object.freeze([
   phrase("welcome-reunion", "frequent", "Bonjour ! Je suis content de te retrouver.", "Bonjour ! Je suis content de vous retrouver."),
   phrase("welcome-ready", "occasional", "Bonjour ! Prêt pour une bonne séance ?", undefined,
