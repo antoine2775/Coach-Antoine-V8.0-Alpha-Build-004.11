@@ -4,6 +4,8 @@ import { QUESTIONS } from "../../onboarding/questions";
 import { ASSESSMENT_MESSAGES } from "../../onboarding/assessmentMessages";
 import { EQUIPMENT_OPTIONS, LEVEL_LABELS, getAssessmentProposal, prepareAssessmentStep, toggleEquipment, hasEquipmentSelection } from "../../onboarding/assessmentSteps";
 import OnboardingText from "./OnboardingText";
+import OnboardingAudio from "./OnboardingAudio";
+import { sequenceInscription } from "../../audio/voixInscription";
 
 const Paragraphs = ({ texts }) => texts.map((text) => <p key={text}><OnboardingText>{text}</OnboardingText></p>);
 const Back = ({ onClick }) => <button type="button" className="secondary-button" onClick={onClick}>Retour</button>;
@@ -11,6 +13,7 @@ const Back = ({ onClick }) => <button type="button" className="secondary-button"
 function Safety({ profile, messages, submit, back }) {
   const [confirmed, setConfirmed] = useState(profile.safetyConfirmed === true);
   return <>
+    <OnboardingAudio sources={sequenceInscription('safety', profile.addressMode)} />
     <h2>Avant de commencer</h2>
     <p><OnboardingText>{messages.safety}</OnboardingText></p>
     <Paragraphs texts={messages.confirmation} />
@@ -30,6 +33,7 @@ function Equipment({ profile, messages, submit, back }) {
   const equipment = profile.equipment;
   const chosen = hasEquipmentSelection(profile);
   return <>
+    <OnboardingAudio sources={sequenceInscription('equipment', profile.addressMode)} />
     <h2><OnboardingText>{messages.equipment}</OnboardingText></h2>
     <div className="onboarding-options">
       {[{ value: "none", label: "Non, pas de matériel" }, ...EQUIPMENT_OPTIONS].map((option) =>
@@ -46,8 +50,9 @@ function Equipment({ profile, messages, submit, back }) {
   </>;
 }
 
-function Introduction({ messages, submit, back }) {
+function Introduction({ profile, messages, submit, back }) {
   return <>
+    <OnboardingAudio sources={sequenceInscription('assessment-introduction', profile.addressMode)} />
     <h2>Quelques questions pour commencer</h2>
     <Paragraphs texts={messages.introduction} />
     <div className="onboarding-actions">
@@ -61,6 +66,7 @@ function Question({ profile, step, submit, back }) {
   const index = QUESTIONS.findIndex((question) => question.id === step.questionId);
   const question = QUESTIONS[index];
   return <>
+    <OnboardingAudio sources={sequenceInscription(step.id, profile.addressMode)} />
     <p className="onboarding-secondary onboarding-progress-label">Avancée du questionnaire</p>
     <div className="onboarding-question-progress" role="progressbar" aria-label="Progression du questionnaire"
       aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1}>
@@ -78,6 +84,7 @@ function Question({ profile, step, submit, back }) {
 
 function Proposal({ profile, messages, submit, back }) {
   const [manual, setManual] = useState(false);
+  const [manualIntroduction, setManualIntroduction] = useState(true);
   const [selected, setSelected] = useState(profile.proposedLevel);
   const proposal = getAssessmentProposal(profile);
   if (!proposal) return <>
@@ -85,11 +92,12 @@ function Proposal({ profile, messages, submit, back }) {
     <Back onClick={back} />
   </>;
   if (manual) return <>
+    <OnboardingAudio sources={sequenceInscription(`manual-${manualIntroduction ? 'entry' : 'description'}-${selected}`, profile.addressMode)} />
     <h2><OnboardingText>{messages.manual}</OnboardingText></h2>
     <p className="onboarding-secondary"><OnboardingText>{messages.manualHint}</OnboardingText></p>
     <div className="onboarding-options" role="radiogroup" aria-label="Niveau de départ">
       {Object.entries(LEVEL_LABELS).map(([value, label]) => <label className="onboarding-check" key={value}>
-        <input type="radio" name="selectedLevel" value={value} checked={selected === value} onChange={() => setSelected(value)} />
+        <input type="radio" name="selectedLevel" value={value} checked={selected === value} onChange={() => { setManualIntroduction(false); setSelected(value); }} />
         <span>{label}</span>
       </label>)}
     </div>
@@ -100,6 +108,7 @@ function Proposal({ profile, messages, submit, back }) {
     </div>
   </>;
   return <div className="onboarding-proposal">
+    <OnboardingAudio sources={sequenceInscription(`level-proposal-${proposal.proposedLevel}`, profile.addressMode)} />
     <h2><OnboardingText>{messages.proposal(LEVEL_LABELS[proposal.proposedLevel])}</OnboardingText></h2>
     <div className="onboarding-level-summary">
       <p className="onboarding-level-name"><strong>Niveau {LEVEL_LABELS[proposal.proposedLevel]}</strong></p>
@@ -109,7 +118,7 @@ function Proposal({ profile, messages, submit, back }) {
     <p><OnboardingText>{messages.levelChange[proposal.proposedLevel]}</OnboardingText></p>
     <div className="onboarding-actions">
       <button type="button" className="primary-button" onClick={() => submit("acceptCoach")}>Commencer avec ce niveau</button>
-      <button type="button" className="secondary-button" onClick={() => { setSelected(proposal.proposedLevel); setManual(true); }}>Je préfère choisir mon niveau</button>
+      <button type="button" className="secondary-button" onClick={() => { setSelected(proposal.proposedLevel); setManualIntroduction(true); setManual(true); }}>Je préfère choisir mon niveau</button>
       <Back onClick={back} />
     </div>
   </div>;

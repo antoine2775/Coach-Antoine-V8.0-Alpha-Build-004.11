@@ -10,7 +10,8 @@ import { createEmptyProfile, readProfile, updateProfile, PROFILE_KEY } from "../
 
 const code = buildSync({ entryPoints: ["src/components/onboarding/EarlySteps.jsx"],
   bundle: true, write: false, platform: "node", format: "cjs",
-  external: ["react", "../../context/UserProfileContext", "../../onboarding/earlySteps", "../../onboarding/earlyMessages"],
+  define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
+  external: ["./OnboardingAudio", "react", "../../context/UserProfileContext", "../../onboarding/earlySteps", "../../onboarding/earlyMessages"],
 }).outputFiles[0].text;
 
 // Exécute les vrais composants, transitions et écritures du lot 1, avec un stockage
@@ -43,6 +44,7 @@ function setup(initial) {
   } }) };
   const module = { exports: {} };
   vm.runInNewContext(code, { module, require: (name) => {
+    if (name === "./OnboardingAudio") return { default: () => null, __esModule: true };
     if (name === "react") return react;
     if (name.includes("UserProfileContext")) return context;
     if (name.includes("earlyMessages")) return { EARLY_MESSAGES };

@@ -154,7 +154,8 @@ test("réponse inconnue, hors ordre ou bilan incomplet : aucune réponse invent�
 });
 
 const code = buildSync({ entryPoints: ["src/components/onboarding/AssessmentSteps.jsx"], bundle: true,
-  write: false, platform: "node", format: "cjs", external: ["react", "../../context/UserProfileContext",
+  define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
+  write: false, platform: "node", format: "cjs", external: ["./OnboardingAudio", "react", "../../context/UserProfileContext",
     "../../onboarding/questions", "../../onboarding/assessmentMessages", "../../onboarding/assessmentSteps"],
 }).outputFiles[0].text;
 
@@ -178,6 +179,7 @@ function setup(initial = draft()) {
   } }) };
   const module = { exports: {} };
   vm.runInNewContext(code, { module, require: (name) => {
+    if (name === "./OnboardingAudio") return { default: () => null, __esModule: true };
     if (name === "react") return react;
     if (name.includes("UserProfileContext")) return context;
     if (name.endsWith("/questions")) return { QUESTIONS };

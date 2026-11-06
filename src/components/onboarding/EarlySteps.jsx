@@ -3,6 +3,8 @@ import { useUserProfile } from "../../context/UserProfileContext";
 import { prepareEarlyStep } from "../../onboarding/earlySteps";
 import { EARLY_MESSAGES } from "../../onboarding/earlyMessages";
 import OnboardingText from "./OnboardingText";
+import OnboardingAudio from "./OnboardingAudio";
+import { sequenceInscription, PAUSE_ENTRE_PARAGRAPHES_MS } from "../../audio/voixInscription";
 
 function Paragraphs({ texts }) {
   return texts.map((text) => <p key={text}><OnboardingText>{text}</OnboardingText></p>);
@@ -38,8 +40,9 @@ function Introduction({ submit, profile }) {
   </>;
 }
 
-function Explanation({ messages, submit, back }) {
+function Explanation({ messages, submit, back, profile }) {
   return <>
+    <OnboardingAudio sources={sequenceInscription('getting-to-know', profile?.addressMode)} pauseMs={PAUSE_ENTRE_PARAGRAPHES_MS} />
     <h2>Une séance adaptée</h2>
     <Paragraphs texts={messages.explanation} />
     <div className="onboarding-actions">
@@ -51,6 +54,7 @@ function Explanation({ messages, submit, back }) {
 
 function Sex({ messages, submit, back, profile }) {
   return <>
+    <OnboardingAudio sources={sequenceInscription('sex', profile?.addressMode)} />
     <h2><OnboardingText>{messages.sex}</OnboardingText></h2>
     <div className="onboarding-actions">
       <button type="button" className="secondary-button onboarding-sex-choice" aria-pressed={profile?.sex === "female"} onClick={() => submit("sex", "female")}>Une femme</button>
@@ -77,6 +81,7 @@ function FirstName({ messages, submit, back, profile }) {
     setError(!result.ok);
     if (result.saved) setGreeting(true);
   }}>
+    <OnboardingAudio sources={sequenceInscription('first-name', profile?.addressMode)} />
     <h2><OnboardingText>{messages.firstName}</OnboardingText></h2>
     <label className="field"><span>Prénom</span>
       <input name="firstName" autoComplete="given-name" type="text" required value={name}
@@ -97,6 +102,7 @@ function Age({ messages, submit, back, profile, restartOnboarding }) {
   const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState(false);
   if (blocked) return <>
+    <OnboardingAudio sources={sequenceInscription('underage', profile?.addressMode)} />
     <div role="alert"><Paragraphs texts={messages.underage} /></div>
     <div className="onboarding-actions">
       <button type="button" className="primary-button" onClick={restartOnboarding}>Recommencer pour une autre personne</button>
@@ -110,6 +116,7 @@ function Age({ messages, submit, back, profile, restartOnboarding }) {
     setError(!result.ok);
     if (result.blocked) { setAge(""); setBlocked(true); }
   }}>
+    <OnboardingAudio sources={sequenceInscription('age', profile?.addressMode)} />
     <h2><OnboardingText>{messages.age}</OnboardingText></h2>
     <label className="field"><span>Âge en années</span>
       <input name="age" type="number" inputMode="numeric" min="1" step="1" required value={age}

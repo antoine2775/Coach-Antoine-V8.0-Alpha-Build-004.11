@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const base = "/Coach-Antoine-V8.0-Alpha-Build-004.11/";
 const code = buildSync({
   entryPoints: ["src/components/onboarding/EarlySteps.jsx"], bundle: true, write: false,
-  platform: "node", format: "cjs", external: ["react", "../../context/UserProfileContext"],
+  platform: "node", format: "cjs", external: ["react", "react-router-dom", "../../context/UserProfileContext"],
   define: { "import.meta.env.BASE_URL": JSON.stringify(base) },
 }).outputFiles[0].text;
 
@@ -41,7 +41,10 @@ async function mount({ play = () => Promise.resolve(), strict = false, step = 0 
     root.render(strict ? React.createElement(React.StrictMode, null, content) : content);
   }
   await act(async () => render(step));
-  return { calls, updates, document: dom.window.document,
+  return { get calls() {
+      const introductions = new Set(calls.filter(c => c.method === "play" && c.src === `${base}audio/intro-coach-antoine.mp3`).map(c => c.audio));
+      return calls.filter(c => introductions.has(c.audio));
+    }, updates, document: dom.window.document,
     async render(index) { await act(async () => render(index)); },
     async click(label) {
       const button = [...dom.window.document.querySelectorAll("button")].find(b => b.textContent === label);
@@ -78,7 +81,7 @@ for (const [label, mode] of [["Oui, on se tutoie", "tu"], ["Je préfère qu’on
       await h.click(label);
       assert.deepEqual(h.calls.map(c => c.method), ["play", "pause", "load"]);
       assert.equal(audio.getAttribute("src"), null);
-      assert.equal(h.document.querySelector("audio"), null);
+      assert.match(h.document.querySelector("audio").getAttribute("src"), /inscription-explication-niveau-depart/);
       assert.equal(h.document.querySelector("h2").textContent, "Une séance adaptée");
       assert.equal(h.updates.length, 1); assert.equal(h.updates[0].addressMode, mode);
       assert.equal(h.updates[0].onboardingCurrentStep, 1);
@@ -117,17 +120,17 @@ test("Introduction : lecture en attente interrompue au départ, sans relance à 
     await h.render(1);
     assert.deepEqual(h.calls.map(c => c.method), ["play", "pause", "load"]);
     await act(async () => resolvePlay());
-    assert.equal(h.calls.length, 3); assert.equal(h.document.querySelector("audio"), null);
+    assert.equal(h.calls.length, 3); assert.match(h.document.querySelector("audio").getAttribute("src"), /inscription-explication-niveau-depart/);
   } finally { await h.dispose(); }
 });
 
-test("Introduction : retour à l’écran crée une nouvelle lecture, autres écrans silencieux", async () => {
-  const h = await mount({ step: 1 });
+test("Introduction : retour à l’écran crée une nouvelle lecture, écran âge avec son propre audio", async () => {
+  const h = await mount({ step: 4 });
   try {
-    assert.equal(h.calls.length, 0); assert.equal(h.document.querySelector("audio"), null);
+    assert.equal(h.calls.length, 0); assert.match(h.document.querySelector("audio").getAttribute("src"), /question-age/);
     await h.render(0); assert.equal(h.calls.length, 1);
     const firstAudio = h.calls[0].audio;
-    await h.render(2); assert.equal(h.document.querySelector("audio"), null);
+    await h.render(4); assert.match(h.document.querySelector("audio").getAttribute("src"), /question-age/);
     await h.render(0);
     assert.deepEqual(h.calls.map(c => c.method), ["play", "pause", "load", "play"]);
     assert.notEqual(h.calls[3].audio, firstAudio);
