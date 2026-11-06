@@ -1,2 +1,8 @@
 node_modules/
 dist/
+
+# Configuration locale et secrets, à la racine comme dans les sous-dossiers.
+.env
+.env.*
+# Seuls les exemples sans secrets peuvent être suivis.
+!.env.example
