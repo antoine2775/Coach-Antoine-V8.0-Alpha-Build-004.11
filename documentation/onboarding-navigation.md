@@ -379,3 +379,37 @@ Les réponses d'expérience sont désormais « Oui, et encore actuellement. »,
 « Oui, mais j’ai arrêté. », « Non, jamais. » ; leurs valeurs et branches restent
 current, stopped, never. Descriptions, cinq choix complémentaires, conclusion,
 barème et séances restent inchangés.
+
+## Décision fonctionnelle validée — variation des exercices — 7 novembre 2026
+
+**Statut : décision validée par l’utilisateur. Implémentation différée jusqu’à
+la construction du moteur de séances.** Cette section décrit le fonctionnement
+futur ; elle ne signifie pas que ces choix ou ce dialogue sont déjà implémentés.
+Les descriptions historiques du parcours ci-dessus restent des constats de leurs
+versions respectives.
+
+### Dialogue vocal prévu à la fin du questionnaire initial
+
+Texte exact validé :
+
+> Voilà, ta séance est prête ! D'une séance à l'autre, je changerai quelques exercices pour éviter la monotonie. Mais si tu préfères retrouver les mêmes exercices que la dernière fois, aucun problème ! Tu pourras le choisir au début de chaque séance, et même enregistrer cette préférence dans ton profil.
+
+Ce dialogue est à prévoir lors de la future intégration du moteur de séances ;
+aucun texte affiché ni fichier audio n’est modifié par cette consignation.
+
+### Règles de fonctionnement futur
+
+- Par défaut, varier quelques exercices d’une séance à l’autre pour éviter la monotonie.
+- Avant chaque séance, proposer discrètement le choix entre varier quelques exercices
+  et conserver ceux de la séance précédente.
+- Permettre de mémoriser une préférence permanente dans le profil.
+- Le choix ponctuel d’une séance ne modifie pas la préférence enregistrée dans le profil.
+- Lorsqu’une séance reprend les exercices de la précédente, conserver les exercices
+  et leur ordre, mais adapter les paramètres à la forme du jour et aux règles de sécurité.
+  Il ne s’agit donc pas d’imposer à l’identique tous les paramètres de la séance précédente.
+- Pour la première séance, utiliser la séance de référence validée.
+- Ne sélectionner que des exercices compatibles et validés APA.
+
+Ces règles ne constituent pas une validation APA des exercices existants et ne
+valident pas automatiquement la séquence actuellement exécutée par l’application
+comme séance de référence. Leur mise en œuvre relève du futur moteur de séances.

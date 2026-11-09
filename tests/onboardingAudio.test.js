@@ -3,22 +3,24 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { selectionnerV1 } from '../scripts/voix/questionnaire.mjs';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { JSDOM } from 'jsdom';
 import { buildSync } from 'esbuild';
+import { createEmptyProfile } from '../src/utils/userProfile.js';
 import { ONBOARDING_STEPS } from '../src/onboarding/steps.js';
 const require = createRequire(import.meta.url);
 const base = '/Coach-Antoine-V8.0-Alpha-Build-004.11/';
 const code = buildSync({
-  stdin: { contents: 'export { default as EarlySteps } from "./src/components/onboarding/EarlySteps.jsx"; export { default as AssessmentSteps } from "./src/components/onboarding/AssessmentSteps.jsx"; export { default as Audio } from "./src/components/onboarding/OnboardingAudio.jsx"; export * from "./src/audio/voixInscription.js";', resolveDir: process.cwd() },
+  stdin: { contents: 'export { default as EarlySteps } from "./src/components/onboarding/EarlySteps.jsx"; export { default as CompletionSteps } from "./src/components/onboarding/CompletionSteps.jsx"; export { default as AssessmentSteps } from "./src/components/onboarding/AssessmentSteps.jsx"; export { default as Audio } from "./src/components/onboarding/OnboardingAudio.jsx"; export * from "./src/audio/voixInscription.js";', resolveDir: process.cwd() },
   bundle: true, write: false, platform: 'node', format: 'cjs', external: ['react', 'react-router-dom', '../../context/UserProfileContext'],
   define: { 'import.meta.env.BASE_URL': JSON.stringify(base) },
 }).outputFiles[0].text;
 
-async function mount({ mode = 'tu', step = 1, strict = false, play = () => Promise.resolve(), playerSources, level } = {}) {
+async function mount({ mode = 'tu', step = 1, strict = false, play = () => Promise.resolve(), playerSources, level, completion = {} } = {}) {
   const dom = new JSDOM('<div id="root"></div>', { url: `https://example.test${base}onboarding` });
   const previous = { window: globalThis.window, document: globalThis.document, act: globalThis.IS_REACT_ACT_ENVIRONMENT };
   globalThis.window = dom.window; globalThis.document = dom.window.document; globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -42,6 +44,7 @@ async function mount({ mode = 'tu', step = 1, strict = false, play = () => Promi
   let maxActive = 0, currentStep = step, navigate, disposed = false;
   let profile = { addressMode: mode, firstName: 'Alex', sex: 'female', age: step >= 5 ? 40 : null, safetyConfirmed: step > 5, equipment: [], equipmentSelectionMade: false, assessmentAnswers: Array(9).fill(null), onboardingCurrentStep: step };
   if (level) profile = { ...profile, proposedLevel: level, assessmentAnswers: Array(9).fill({ reprise: 'c', forme: 'b', tonique: 'a' }[level]), assessmentDate: '2026-11-05T12:00:00Z', assessmentVersion: '1' };
+  profile = { ...profile, ...completion };
   const media = dom.window.HTMLMediaElement.prototype;
   media.play = function () {
     calls.push({ method: 'play', audio: this, src: this.getAttribute('src'), ended: this.onended, error: this.onerror });
@@ -59,7 +62,7 @@ async function mount({ mode = 'tu', step = 1, strict = false, play = () => Promi
   const module = { exports: {} };
   vm.runInNewContext(code, { module, require: n => n.includes('UserProfileContext') ? context : require(n) });
   const exports = module.exports;
-  function Screen() { navigate = useNavigate(); if (currentStep > 17) return React.createElement('p', null, 'Étape suivante'); return playerSources ? React.createElement(exports.Audio, { sources: playerSources }) : React.createElement(currentStep <= 4 ? exports.EarlySteps : exports.AssessmentSteps, { key: ONBOARDING_STEPS[currentStep].id, step: ONBOARDING_STEPS[currentStep] }); }
+  function Screen() { navigate = useNavigate(); return playerSources ? React.createElement(exports.Audio, { sources: playerSources }) : React.createElement(currentStep <= 4 ? exports.EarlySteps : currentStep <= 17 ? exports.AssessmentSteps : exports.CompletionSteps, { key: ONBOARDING_STEPS[currentStep].id, step: ONBOARDING_STEPS[currentStep] }); }
   function render() {
     const content = React.createElement(MemoryRouter, { initialEntries: ['/onboarding'] }, React.createElement(Screen));
     root.render(strict ? React.createElement(React.StrictMode, null, content) : content);
@@ -90,15 +93,15 @@ async function mount({ mode = 'tu', step = 1, strict = false, play = () => Promi
   };
 }
 
-test('registre fermé : trente et un dialogues, soixante fichiers présents, base URL et silence hors lots', async () => {
-  const h = await mount({ step: 14 });
+test('registre fermé : quarante-quatre dialogues, quatre-vingt-six fichiers présents, base URL et silence hors lots', async () => {
+  const h = await mount({ step: 20 });
   try {
     const mapping = h.exports.VOIX_INSCRIPTION;
-    assert.equal(Object.keys(mapping).length, 31);
+    assert.equal(Object.keys(mapping).length, 44);
     const paths = Object.values(mapping).flatMap(v => Object.values(v));
-    assert.equal(new Set(paths).size, 60);
+    assert.equal(new Set(paths).size, 86);
     for (const path of paths) assert.ok(existsSync(new URL(`../public/${path}`, import.meta.url)), path);
-    for (const id of ['assessment-q7', 'finish', 'introduction', 'inconnu']) assert.equal(h.exports.sequenceInscription(id, 'tu').length, 0);
+    for (const id of ['incomplete', 'introduction', 'inconnu']) assert.equal(h.exports.sequenceInscription(id, 'tu').length, 0);
     assert.equal(h.plays().length, 0);
   } finally { await h.dispose(); }
 });
@@ -448,7 +451,7 @@ for (const mode of ['tu', 'vous']) {
         await h.click('Retour'); assert.match(h.plays().at(-1).src, new RegExp(expected[0]));
         const beforeExit = h.plays().at(-1);
         await h.click('Commencer avec ce niveau'); await h.ended(beforeExit);
-        assert.equal(h.document.querySelector('audio'), null); assert.equal(h.maxActive(), 1);
+        assert.match(h.plays().at(-1).src, /niveau-choisi/); assert.equal(h.maxActive(), 1);
       } finally { await h.dispose(); }
     });
   }
@@ -477,7 +480,7 @@ for (const step of [7, 17]) {
       await h.render(); await h.ended(); assert.equal(h.plays().length, 1);
       await h.click(step === 7 ? 'Continuer' : 'Commencer avec ce niveau');
       if (step === 7) assert.equal(h.document.querySelector('audio').getAttribute('src'), null);
-      else assert.equal(h.document.querySelector('audio'), null);
+      else assert.match(h.plays().at(-1).src, /niveau-choisi/);
     } finally { await h.dispose(); }
   });
 }
@@ -486,7 +489,7 @@ test('lot 04 : 21 correspondances présentes, R02 exclusivement pour les entrée
   const h=await mount({step:14});
   try{
     const mapping=h.exports.VOIX_INSCRIPTION;
-    const paths=Object.values(mapping).slice(20).flatMap(Object.values);
+    const paths=Object.values(mapping).slice(20,31).flatMap(Object.values);
     const expected=selectionnerV1().slice(41,62).map(e=>'audio/voix/inscription/'+e.nomFichier.replace(e.identifiantAudio==='inscription-question-equilibre'?'--r01.mp3':'IMPOSSIBLE','--r02.mp3'));
     assert.deepEqual(paths,expected);
     assert.ok(paths.every(p=>existsSync(new URL('../public/'+p,import.meta.url))));
@@ -496,7 +499,7 @@ test('lot 04 : 21 correspondances présentes, R02 exclusivement pour les entrée
 });
 
 for(const mode of ['tu','vous']){
-  test(`lot 04 ${mode} : Q1 à Q6, questions seules, réponse immédiate, retour et Q7 silencieuse`,async()=>{
+  test(`lot 04 ${mode} : Q1 à Q6, questions seules, réponse immédiate, retour et passage à Q7`,async()=>{
     const h=await mount({mode,step:8});
     const ids=['escaliers','assis-debout','equilibre','rotation-buste','frequence-activite','renforcement'];
     try{
@@ -510,10 +513,10 @@ for(const mode of ['tu','vous']){
         await h.click(answer.textContent);const after=h.plays().length;
         await h.ended(old);await h.render();assert.equal(h.plays().length,after);
       }
-      assert.equal(h.plays().length,6);assert.equal(h.document.querySelector('audio'),null);
+      assert.equal(h.plays().length,7);assert.match(h.plays().at(-1).src,/question-mobilite/);
       await h.click('Retour');assert.match(h.plays().at(-1).src,/question-renforcement/);
       const old=h.plays().at(-1);await h.navigate('/sortie');await h.ended(old);
-      assert.equal(h.plays().length,7);assert.equal(h.maxActive(),1);
+      assert.equal(h.plays().length,8);assert.equal(h.maxActive(),1);
     }finally{await h.dispose();}
   });
   test(`lot 04 ${mode} : choix manuel interrompu sans répéter la question ni lancer un ancien paragraphe`,async()=>{
@@ -567,3 +570,138 @@ for (const mode of ['tu','vous']) for (const level of ['reprise','forme','toniqu
     }finally{await h.dispose();}
   });
 }
+
+test('lot 05 : vingt versions approuvées, empreintes et chemins exacts', async () => {
+  const manifest = JSON.parse(readFileSync(new URL('../scripts/voix/validation/validation-lot05.json', import.meta.url)));
+  const h = await mount({ step: 20 });
+  try {
+    assert.equal(manifest.fichiers.length, 20);
+    for (const f of manifest.fichiers) {
+      const e = selectionnerV1()[f.numero - 1];
+      const version = f.numero === 71 ? 'r03' : f.numero === 73 ? 'r02' : 'r01';
+      assert.equal(f.nomFichier, e.nomFichier.replace('r01.mp3', version + '.mp3'));
+      const path = h.exports.VOIX_INSCRIPTION[e.identifiantAudio.replace('inscription-', '')][e.adresse];
+      assert.equal(path, 'audio/voix/inscription/' + f.nomFichier);
+      assert.equal(createHash('sha256').update(readFileSync(new URL('../public/' + path, import.meta.url))).digest('hex'), f.sha256);
+    }
+  } finally { await h.dispose(); }
+});
+
+for (const mode of ['tu', 'vous']) {
+  test(`lot 05 ${mode} : Q7 à Q9, réponses silencieuses, retour et arrêt`, async () => {
+    const h = await mount({ mode, step: 14 });
+    try {
+      for (const id of ['mobilite', 'activite-passee', 'duree-seance']) {
+        const old = h.plays().at(-1);
+        assert.match(old.src, new RegExp(`question-${id}--${mode}--hf--r01.mp3$`));
+        const e = selectionnerV1().find(e => e.identifiantAudio === 'inscription-question-' + id && e.adresse === mode);
+        assert.equal(h.document.querySelector('h2').textContent, e.texte);
+        const n = h.plays().length; await h.render(); assert.equal(h.plays().length, n);
+        if (id === 'duree-seance') break;
+        const b = [...h.document.querySelectorAll('button')].find(b => b.textContent !== 'Retour');
+        await h.click(b.textContent); const after = h.plays().length;
+        await h.ended(old); assert.equal(h.plays().length, after);
+      }
+      await h.click('Retour'); assert.match(h.plays().at(-1).src, /question-activite-passee/);
+      const old = h.plays().at(-1); await h.navigate('/sortie'); await h.ended(old);
+      assert.equal(old.audio.getAttribute('src'), null); assert.equal(h.maxActive(), 1);
+    } finally { await h.dispose(); }
+  });
+
+  test(`lot 05 ${mode} : transition ordonnée, même étape, retour et navigation rapide`, async () => {
+    const h = await mount({ mode, step: 18, completion: { onboardingCompletionStage: 'transition' } });
+    try {
+      const ids = ['niveau-choisi', 'experience-presentation', 'experience-accompagnement'];
+      for (const [i, id] of ids.entries()) {
+        const rev = mode === 'tu' && i === 1 ? 'r03' : mode === 'tu' && i === 2 ? 'r02' : 'r01';
+        assert.match(h.plays().at(-1).src, new RegExp(`${id}--${mode}--hf--${rev}.mp3$`));
+        await h.render(); assert.equal(h.plays().length, i + 1);
+        if (i < 2) await h.ended();
+      }
+      const old = h.plays().at(-1); await h.click('Continuer');
+      assert.match(h.plays().at(-1).src, /question-experience/);
+      assert.equal(old.audio.getAttribute('src'), null);
+      await h.ended(old); assert.equal(h.plays().length, 4);
+      await h.click('Retour'); assert.match(h.plays().at(-1).src, /niveau-choisi/);
+      const pending = h.plays().at(-1); await h.click('Continuer'); await h.navigate('/sortie');
+      const n = h.plays().length; await h.ended(pending); assert.equal(h.plays().length, n);
+      assert.equal(h.maxActive(), 1);
+    } finally { await h.dispose(); }
+  });
+
+  for (const branch of ['current', 'stopped', 'never']) {
+    test(`lot 05 ${mode} : branche ${branch}, réaction conditionnelle et retours`, async () => {
+      const h = await mount({ mode, step: 18 });
+      try {
+        assert.match(h.plays()[0].src, /question-experience/);
+        const labels = { current: 'Oui, et encore actuellement.', stopped: 'Oui, mais j’ai arrêté.', never: 'Non, jamais.' };
+        await h.click(labels[branch]);
+        if (branch === 'never') {
+          assert.equal(h.document.querySelector('audio'), null);
+          assert.equal(h.plays().length, 1);
+          return;
+        }
+        const expected = branch === 'current' ? 'question-programme-actuel' : 'question-arret-programme';
+        assert.match(h.plays().at(-1).src, new RegExp(`${expected}--${mode}`));
+        const old = h.plays().at(-1);
+        await h.click('Je ne sais pas vraiment');
+        assert.match(h.plays().at(-1).src, new RegExp(`reaction-experience--${mode}`));
+        assert.equal(old.audio.getAttribute('src'), null);
+        const n = h.plays().length; await h.render(); await h.ended(old); assert.equal(h.plays().length, n);
+        await h.click('Retour'); assert.match(h.plays().at(-1).src, new RegExp(expected));
+        await h.click('Je ne sais pas vraiment');
+        const reaction = h.plays().at(-1); await h.click('Continuer');
+        assert.equal(h.document.querySelector('audio'), null);
+        await h.ended(reaction); assert.equal(reaction.audio.getAttribute('src'), null);
+        await h.click('Retour'); assert.match(h.plays().at(-1).src, /reaction-experience/);
+        assert.equal(h.maxActive(), 1);
+      } finally { await h.dispose(); }
+    });
+  }
+}
+
+test('lot 05 : StrictMode, refus et promesse tardive sans reprise après navigation', async () => {
+  let reject;
+  const h = await mount({ step: 18, strict: true, completion: { onboardingCompletionStage: 'transition' }, play: () => new Promise((_, r) => { reject = r; }) });
+  try {
+    const old = h.plays().at(-1); const lateReject = reject;
+    await h.click('Continuer'); const current = h.plays().at(-1);
+    await act(async () => lateReject(new Error('autoplay')));
+    assert.match(current.src, /question-experience/);
+    const n = h.plays().length; await h.render(); assert.equal(h.plays().length, n);
+    await h.error(current); await h.ended(old); await h.render();
+    assert.equal(h.plays().length, n); assert.equal(current.audio.getAttribute('src'), null);
+    assert.equal(h.maxActive(), 1);
+  } finally { await h.dispose(); }
+});
+
+const finalProfile = mode => ({ ...createEmptyProfile(), addressMode:mode, firstName:'Antoine',sex:'male',age:40,safetyConfirmed:true,equipmentSelectionMade:true,assessmentAnswers:Array(9).fill('b'),assessmentDate:'2026-11-06T10:00:00Z',assessmentVersion:'1',proposedLevel:'forme',selectedLevel:'forme',levelOrigin:'coach',previousProgramExperience:'never',onboardingCurrentStep:20 });
+
+test('lot 06 : les six références React correspondent exactement au manifeste approuvé',async()=>{
+ const h=await mount({step:20});try{
+ const m=JSON.parse(readFileSync(new URL('../scripts/voix/validation/validation-lot06.json',import.meta.url)));
+ assert.equal(m.fichiers.length,6);
+ for(const f of m.fichiers){const e=selectionnerV1()[f.numero-1],path=h.exports.VOIX_INSCRIPTION[e.identifiantAudio.replace('inscription-','')][e.adresse];assert.equal(path,'audio/voix/inscription/'+f.nomFichier);assert.equal(createHash('sha256').update(readFileSync(new URL('../public/'+path,import.meta.url))).digest('hex'),f.sha256);}
+ }finally{await h.dispose();}
+});
+for(const mode of ['tu','vous']){
+ test(`lot 06 ${mode} : trois dialogues fixes dans l’ordre affiché, prénom conservé mais silencieux`,async()=>{
+ const h=await mount({mode,step:20,completion:finalProfile(mode)});try{
+ assert.equal(h.document.querySelector('h2').textContent,'Merci Antoine, c’est bon pour moi.');
+ const ids=['seances-adaptees','profil-evolutif','premiere-seance'];
+ for(const [i,id]of ids.entries()){
+ const rev=i===1?(mode==='tu'?'r03':'r02'):'r01';assert.equal(h.plays().length,i+1);assert.match(h.plays().at(-1).src,new RegExp(`conclusion-${id}--${mode}--hf--${rev}.mp3$`));
+ const e=selectionnerV1().find(e=>e.identifiantAudio==='inscription-conclusion-'+id&&e.adresse===mode);assert.equal(h.document.querySelectorAll('p')[i].textContent,e.texte);
+ await h.render();assert.equal(h.plays().length,i+1);await h.ended();}
+ assert.equal(h.plays().length,3);assert.equal(h.maxActive(),1);assert.equal(h.pendingTimers(),0);
+ await h.click('Retour');assert.match(h.plays().at(-1).src,/question-experience/);await h.click('Non, jamais.');assert.match(h.plays().at(-1).src,/conclusion-seances-adaptees/);
+ }finally{await h.dispose();}
+ });
+ for(const button of ['Oui, c’est parti !','Pas maintenant'])test(`lot 06 ${mode} : ${button}, interruption et aucun ancien paragraphe`,async()=>{
+ const h=await mount({mode,step:20,completion:finalProfile(mode)});try{const old=h.plays()[0];await h.click(button);const n=h.plays().length;await h.ended(old);await h.advance(1000);assert.equal(h.plays().length,n);assert.equal(old.audio.getAttribute('src'),null);assert.equal(h.maxActive(),1);}finally{await h.dispose();}
+ });
+}
+test('lot 06 : profil incomplet silencieux, StrictMode et erreur sans relance',async()=>{
+ let h=await mount({step:20});try{assert.equal(h.plays().length,0);}finally{await h.dispose();}
+ h=await mount({step:20,strict:true,completion:finalProfile('tu')});try{assert.equal(h.plays().length,2);const old=h.plays().at(-1);await h.error(old);await h.ended(old);await h.render();assert.equal(h.plays().length,2);assert.equal(h.maxActive(),1);await h.navigate('/sortie');assert.equal(old.audio.getAttribute('src'),null);}finally{await h.dispose();}
+});

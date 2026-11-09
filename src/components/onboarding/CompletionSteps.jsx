@@ -4,6 +4,8 @@ import { useUserProfile } from "../../context/UserProfileContext";
 import { COMPLETION_MESSAGES } from "../../onboarding/completionMessages";
 import { getStopReasonLabel } from "../../utils/personalizedTexts";
 import OnboardingText from "./OnboardingText";
+import OnboardingAudio from "./OnboardingAudio";
+import { sequenceInscription } from "../../audio/voixInscription";
 import { EXPERIENCE_OPTIONS, STOP_REASON_OPTIONS, CURRENT_PROGRAM_MISSING_OPTIONS, getCompletionStage, canCompleteOnboarding, prepareCompletionStep } from "../../onboarding/completionSteps";
 
 export default function CompletionSteps({ step }) {
@@ -14,6 +16,12 @@ export default function CompletionSteps({ step }) {
   const messages = COMPLETION_MESSAGES[profile.addressMode === "vous" ? "vous" : "tu"];
   const stage = getCompletionStage(profile);
   const current = profile.previousProgramExperience === "current";
+  // Les sous-écrans changent aussi sans changement d'identifiant principal.
+  const audioScreen = step.id === "previous-experience"
+    ? `completion-${stage === "transition" ? "transition" : "experience"}`
+    : step.id === "stop-reason"
+      ? `completion-${stage === "reaction" ? "reaction" : current ? "current" : "stopped"}`
+      : step.id === "finish" && canCompleteOnboarding(profile) ? "finish" : "incomplete";
   const submit = (action, value) => {
     if (finishing.current) return;
     const result = prepareCompletionStep(profile, action, value);
@@ -27,6 +35,7 @@ export default function CompletionSteps({ step }) {
   };
   const back = <button type="button" className="secondary-button" onClick={() => submit("back")}>Retour</button>;
   return <>
+    <OnboardingAudio key={audioScreen} sources={sequenceInscription(audioScreen, profile.addressMode)} />
     {step.id === "previous-experience" && (stage === "transition" ? <>
       {messages.transition.map((text, index) => index === 0 ? <h2 key={text}><OnboardingText>{text}</OnboardingText></h2> : <p key={text}><OnboardingText>{text}</OnboardingText></p>)}
       <div className="onboarding-actions">

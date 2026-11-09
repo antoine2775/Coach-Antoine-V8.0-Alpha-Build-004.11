@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "lot": "06",
+  "reference": "lot06-validation-partielle-utilisateur",
+  "date": "2026-11-06T10:03:38.037Z",
+  "origine": "Validation finale explicite à l’écoute : 83/84/87/88 R01, 85 TU R03 Audacity, 86 VOUS R02. Six dialogues fixes approuvés.",
+  "fichiers": [
+    {
+      "numero": 83,
+      "nomFichier": "inscription-conclusion-seances-adaptees--tu--hf--r01.mp3",
+      "sha256": "9da980f032404554fa04f036ddcd2e0120b13b53c0177a11b453800227edafbf",
+      "idDecision": "9519fa41095fbc66353a0ef808cc8c023326a80a01b2987f1085435ed77aaf85"
+    },
+    {
+      "numero": 84,
+      "nomFichier": "inscription-conclusion-seances-adaptees--vous--hf--r01.mp3",
+      "sha256": "55234aec2089ccc608225b7e969ae67d6bea1adc70611fa189b682dbded05d9c",
+      "idDecision": "86baaf084d538705c34d48322b5e8b382ea716504c66e983772136a295056cc7"
+    },
+    {
+      "numero": 85,
+      "nomFichier": "inscription-conclusion-profil-evolutif--tu--hf--r03.mp3",
+      "sha256": "a1d3db42b81c97848c836c9253ccdab05fb7ea09e85490ed39c2d710045efebd",
+      "idDecision": "dcae393ceb624ddd548a6f717424ae7dcc7c74abd82f18fe7df25b64610554ee"
+    },
+    {
+      "numero": 86,
+      "nomFichier": "inscription-conclusion-profil-evolutif--vous--hf--r02.mp3",
+      "sha256": "617d5b94052ce568d5c771b3d44334ec152f79dc5e16c2529324feba513b6773",
+      "idDecision": "924755598bf92acd0876ccab88c7437300c5a3b8be11d8730ba228fab55989d0"
+    },
+    {
+      "numero": 87,
+      "nomFichier": "inscription-conclusion-premiere-seance--tu--hf--r01.mp3",
+      "sha256": "36b097b3c1d830060b7f8e730fd784619ec4cb9789f0deabd33abadd046a228d",
+      "idDecision": "b6e6db6c67482ce9da17d32d1e7fac21f00e1f5f56cf9de41c949d74818ba7e6"
+    },
+    {
+      "numero": 88,
+      "nomFichier": "inscription-conclusion-premiere-seance--vous--hf--r01.mp3",
+      "sha256": "ac21afaae924dd12939c03a63b5aefe043368f7bef0199b18f10871c78766182",
+      "idDecision": "564d53925bb628780f3855ec282d41894ab9958a0ed9eb50dbe85bc8bf9f1013"
+    }
+  ]
+}

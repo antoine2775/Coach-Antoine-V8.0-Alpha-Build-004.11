@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "lot": "05",
+  "reference": "lot05-validation-utilisateur-2026-11-06",
+  "date": "2026-11-06",
+  "origine": "Validation explicite à l’écoute confirmée par l’utilisateur : R03 entrée 71 TU, R02 entrée 73 TU, 18 autres versions conservées.",
+  "fichiers": [
+    {
+      "numero": 63,
+      "nomFichier": "inscription-question-mobilite--tu--hf--r01.mp3",
+      "sha256": "1e2a756f3997e3ae82e7a7bc961a9b4e1964f4f6213943f31a24504607b31788",
+      "idDecision": "ca580057480d8c3238fa2f9967e87a4020369cc4509f9a8ca3b473974043b54d"
+    },
+    {
+      "numero": 64,
+      "nomFichier": "inscription-question-mobilite--vous--hf--r01.mp3",
+      "sha256": "24f1e8f6343946e5f16304fbc57287336330ae0654a1cb786e99e8e6675c815a",
+      "idDecision": "b797193dc4320f56a985a859d51d242b1d17a7c3c01773b6ddf1281dafc7c754"
+    },
+    {
+      "numero": 65,
+      "nomFichier": "inscription-question-activite-passee--tu--hf--r01.mp3",
+      "sha256": "664da7d8c458e17cdbce338045b3eaa7666ecef30ce6eed4d083dc180e54e02e",
+      "idDecision": "c4d7d78646984b68e78adeda3aa4d5e13f4c012533c840e654840ad2b44f43b7"
+    },
+    {
+      "numero": 66,
+      "nomFichier": "inscription-question-activite-passee--vous--hf--r01.mp3",
+      "sha256": "bd5b8ca813dc00531ac86a4428744020d9ee376c560d554594cc551a8f6f6ef1",
+      "idDecision": "5505347fd6d5a93ec37ce473412dc68b80aaedd302ce7567a49ac840603fd1e0"
+    },
+    {
+      "numero": 67,
+      "nomFichier": "inscription-question-duree-seance--tu--hf--r01.mp3",
+      "sha256": "af8b368859fea514fccf94c9586c532d3cc6098d901d6d09ef42082accdb84b4",
+      "idDecision": "edd4647b9fd4a562647b61154e2ffd2a037e48cdd6c0b35a4c6b87a539192239"
+    },
+    {
+      "numero": 68,
+      "nomFichier": "inscription-question-duree-seance--vous--hf--r01.mp3",
+      "sha256": "423a31a628983182bd38041e1aaf4a906a35289dc5679f6db41517c237614b62",
+      "idDecision": "ab71bbf0303ebdf881806918feb51f5ee9881b46de790e1f70eb7d3c05b26f40"
+    },
+    {
+      "numero": 69,
+      "nomFichier": "inscription-niveau-choisi--tu--hf--r01.mp3",
+      "sha256": "117ef1a0f02a80a20406cb0852698f15ce76a78be672f04684fd406061c7caf6",
+      "idDecision": "6f95013050e28b020b88f7153261513dddeaab216c49cfac9f1aa9ae8261905c"
+    },
+    {
+      "numero": 70,
+      "nomFichier": "inscription-niveau-choisi--vous--hf--r01.mp3",
+      "sha256": "40a9e20eaa5f88531ec75eeb80849f174987a28b2155a43f2fc26c2956b6cdd7",
+      "idDecision": "7d942f2545ce470920d7920c01126f5279985a997caf2e8236787e6ff52cef01"
+    },
+    {
+      "numero": 71,
+      "nomFichier": "inscription-experience-presentation--tu--hf--r03.mp3",
+      "sha256": "98a43c8b2c62b741f66e792ab787d3ad3e05bbde63693b5e4342435166688f10",
+      "idDecision": "a022dce65eed2b9e0a284c066cd543c7b20488ae0eb4ab39b82ec8dc73a72f25"
+    },
+    {
+      "numero": 72,
+      "nomFichier": "inscription-experience-presentation--vous--hf--r01.mp3",
+      "sha256": "fe1f5c55f83ef300f3c38fe7cececc199b37b409030a8dc574ea3b92808a61f3",
+      "idDecision": "cbe97593193d417f629970c3ac23d1514b68bac3c6288aae0d2b84c2895fae9a"
+    },
+    {
+      "numero": 73,
+      "nomFichier": "inscription-experience-accompagnement--tu--hf--r02.mp3",
+      "sha256": "1349fb710beeb1dc29802834e2ab76ceb4a1a59e0ab239c531f3c9c2df987c7e",
+      "idDecision": "d16a0d943534773206152ef00266da8d36b127c95283cd669e9f9c39772b3dd6"
+    },
+    {
+      "numero": 74,
+      "nomFichier": "inscription-experience-accompagnement--vous--hf--r01.mp3",
+      "sha256": "3d608b3592765d6a8459e0ee23ff4ce65838e24b36b3f3eedaf0049959e87d03",
+      "idDecision": "eaa975720b510423430b2e0a8e4fb8d02d83ac5e421de2011b7a2bccc8fdc370"
+    },
+    {
+      "numero": 75,
+      "nomFichier": "inscription-question-experience--tu--hf--r01.mp3",
+      "sha256": "5367f155af28828a918867569f93dbae5ec442c35af74eaa53cde4ae9b11e4c9",
+      "idDecision": "8e6cb20e4ec9df9e8a34432de1b165f0897199022a7e21d7fbcacdc9497d2f9f"
+    },
+    {
+      "numero": 76,
+      "nomFichier": "inscription-question-experience--vous--hf--r01.mp3",
+      "sha256": "a9dca0bac4ba9879a4abcd8fa76ca392871f78c4be375d2c717177d9245670e3",
+      "idDecision": "cdbd4a143c235e1d8ccf400c5171f35add4a613b34118635eb665d222c428225"
+    },
+    {
+      "numero": 77,
+      "nomFichier": "inscription-question-programme-actuel--tu--hf--r01.mp3",
+      "sha256": "ea6f886a948e3ee38fb66b699521c03a29e5a4a0427a33d0785012abe27c9a97",
+      "idDecision": "de56732a90e0b8f4e24a02091e3800987ea748ea5a6df7fae1d79a17346d38fa"
+    },
+    {
+      "numero": 78,
+      "nomFichier": "inscription-question-programme-actuel--vous--hf--r01.mp3",
+      "sha256": "a3d13f9b81a376c122572851f7095c2f128cc292986cdb7cb16921a71f6e64b2",
+      "idDecision": "387430a085580432984327721a39190e3e564b0c6ae4a332b9a5bf887aa13642"
+    },
+    {
+      "numero": 79,
+      "nomFichier": "inscription-question-arret-programme--tu--hf--r01.mp3",
+      "sha256": "2a8772f1f77f51fe899803cddf1ecb6f56ffc2054a405730748728c3b0ec4610",
+      "idDecision": "3f301c8c2b74e1fa3b6704d2d5d8a400db8d2a9e62f3b1e048a8f4426596357f"
+    },
+    {
+      "numero": 80,
+      "nomFichier": "inscription-question-arret-programme--vous--hf--r01.mp3",
+      "sha256": "d4427ba4c8a5adc9c0d81809485097e591a85165748be75f3f50f92c75b2cc02",
+      "idDecision": "1b9041af43ee740ab0696e5b63db78726b7d0996bfc191286f1a5d4e440da70c"
+    },
+    {
+      "numero": 81,
+      "nomFichier": "inscription-reaction-experience--tu--hf--r01.mp3",
+      "sha256": "0e412dcf1b6a167713fb21d234f7ca5db240aff3fa08bbb69d2ec8c097162d70",
+      "idDecision": "291c6639130f1bf90cc7eaaad7b97ed2f7859d173902290611e67aa711a9bf74"
+    },
+    {
+      "numero": 82,
+      "nomFichier": "inscription-reaction-experience--vous--hf--r01.mp3",
+      "sha256": "1bb29659da6defdbd9baa2a8bc6b67b356028cdee527ac2eb74e89ddfc2bd7ad",
+      "idDecision": "8e480e3df9486bda9e6a58fc23494864edef2d95d69ab752cae94babd42d5fad"
+    }
+  ]
+}

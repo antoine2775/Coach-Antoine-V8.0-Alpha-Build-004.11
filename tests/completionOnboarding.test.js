@@ -29,8 +29,9 @@ function apply(profile, action, value) {
 }
 
 const code = buildSync({ entryPoints: ["src/components/onboarding/CompletionSteps.jsx"], bundle: true,
+  define: { "import.meta.env.BASE_URL": JSON.stringify("/Coach-Antoine-V8.0-Alpha-Build-004.11/") },
   write: false, platform: "node", format: "cjs", external: ["react", "react-router-dom",
-    "../../context/UserProfileContext", "../../onboarding/completionMessages", "../../onboarding/completionSteps"],
+    "./OnboardingAudio", "../../context/UserProfileContext", "../../onboarding/completionMessages", "../../onboarding/completionSteps"],
 }).outputFiles[0].text;
 
 // Vrais composants, transitions et stockage ; hooks et navigation isolés en mémoire.
@@ -52,6 +53,8 @@ function setup(initial = draft()) {
   } }) };
   const module = { exports: {} };
   vm.runInNewContext(code, { module, require: (name) => {
+    // Le lecteur réel est exercé dans onboardingAudio.test.js ; ici, parcours et stockage.
+    if (name.includes("OnboardingAudio")) return { default: () => null };
     if (name === "react") return react;
     if (name === "react-router-dom") return { useNavigate: () => (to, options) => navigations.push({ to, ...options }) };
     if (name.includes("UserProfileContext")) return context;

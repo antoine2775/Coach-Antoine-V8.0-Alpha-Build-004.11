@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Validation audio — Coach Antoine</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">COACH ANTOINE · OUTIL LOCAL</p><h1>Validation des voix</h1><p>Écouter, décider, puis exporter. Aucune intégration automatique.</p></div><button id="exporter" disabled>Exporter le bilan JSON</button></header>
+    <div class="barre"><label for="lot">Lot à examiner</label><select id="lot" disabled></select><span id="resume" role="status"></span></div>
+    <p id="stockage" role="status">Décisions conservées uniquement dans ce navigateur, sur cette adresse.</p>
+    <p id="erreur" role="alert" hidden></p>
+    <div class="atelier">
+      <nav aria-label="Dialogues dans l’ordre de l’inventaire"><ol id="liste"></ol></nav>
+      <section class="fiche" aria-labelledby="titre-dialogue">
+        <p id="position" class="eyebrow"></p><h2 id="titre-dialogue" tabindex="-1">Chargement de l’inventaire…</h2>
+        <p id="variante" class="badge"></p><p id="texte" class="dialogue"></p><p id="nom-fichier" class="nom-fichier"></p>
+        <audio id="lecteur" controls preload="metadata" aria-label="Enregistrement du dialogue sélectionné"></audio>
+        <div class="lecture"><button id="reecouter" disabled>Réécouter depuis le début</button><span id="etat-audio" role="status"></span></div>
+        <fieldset id="decision" disabled><legend>Votre décision</legend><label class="choix"><input type="radio" name="statut" value="valide"> Validé</label><label class="choix"><input type="radio" name="statut" value="a_corriger"> À corriger</label><label class="choix"><input type="radio" name="statut" value="non_examine"> Non examiné</label></fieldset>
+        <label class="remarque" for="remarque">Remarque facultative<textarea id="remarque" rows="4" placeholder="Par exemple : répétition à 2 secondes, mot manquant, pause trop longue…" disabled></textarea></label>
+        <footer><button id="precedent" disabled>← Précédent</button><button id="suivant" disabled>Dialogue suivant →</button></footer>
+      </section>
+    </div>
+    <p class="aide">La lecture ne démarre pas automatiquement. Les lots suivants sont disponibles dans la liste ; les MP3 absents sont signalés. L’écoute humaine reste nécessaire pour chaque fichier.</p>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body></html>

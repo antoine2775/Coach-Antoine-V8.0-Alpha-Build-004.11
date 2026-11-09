@@ -124,6 +124,58 @@ export const VOIX_INSCRIPTION = Object.freeze({
     tu: 'audio/voix/inscription/inscription-question-renforcement--tu--hf--r01.mp3',
     vous: 'audio/voix/inscription/inscription-question-renforcement--vous--hf--r01.mp3',
   }),
+  'question-mobilite': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-mobilite--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-mobilite--vous--hf--r01.mp3',
+  }),
+  'question-activite-passee': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-activite-passee--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-activite-passee--vous--hf--r01.mp3',
+  }),
+  'question-duree-seance': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-duree-seance--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-duree-seance--vous--hf--r01.mp3',
+  }),
+  'niveau-choisi': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-niveau-choisi--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-niveau-choisi--vous--hf--r01.mp3',
+  }),
+  'experience-presentation': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-experience-presentation--tu--hf--r03.mp3',
+    vous: 'audio/voix/inscription/inscription-experience-presentation--vous--hf--r01.mp3',
+  }),
+  'experience-accompagnement': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-experience-accompagnement--tu--hf--r02.mp3',
+    vous: 'audio/voix/inscription/inscription-experience-accompagnement--vous--hf--r01.mp3',
+  }),
+  'question-experience': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-experience--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-experience--vous--hf--r01.mp3',
+  }),
+  'question-programme-actuel': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-programme-actuel--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-programme-actuel--vous--hf--r01.mp3',
+  }),
+  'question-arret-programme': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-question-arret-programme--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-question-arret-programme--vous--hf--r01.mp3',
+  }),
+  'reaction-experience': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-reaction-experience--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-reaction-experience--vous--hf--r01.mp3',
+  }),
+  'conclusion-seances-adaptees': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-conclusion-seances-adaptees--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-conclusion-seances-adaptees--vous--hf--r01.mp3',
+  }),
+  'conclusion-profil-evolutif': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-conclusion-profil-evolutif--tu--hf--r03.mp3',
+    vous: 'audio/voix/inscription/inscription-conclusion-profil-evolutif--vous--hf--r02.mp3',
+  }),
+  'conclusion-premiere-seance': Object.freeze({
+    tu: 'audio/voix/inscription/inscription-conclusion-premiere-seance--tu--hf--r01.mp3',
+    vous: 'audio/voix/inscription/inscription-conclusion-premiere-seance--vous--hf--r01.mp3',
+  }),
 });
 
 const dialogues = {
@@ -153,6 +205,16 @@ const dialogues = {
   'assessment-q4': ['question-rotation-buste'],
   'assessment-q5': ['question-frequence-activite'],
   'assessment-q6': ['question-renforcement'],
+  'assessment-q7': ['question-mobilite'],
+  'assessment-q8': ['question-activite-passee'],
+  'assessment-q9': ['question-duree-seance'],
+  'completion-transition': ['niveau-choisi', 'experience-presentation', 'experience-accompagnement'],
+  'completion-experience': ['question-experience'],
+  'completion-current': ['question-programme-actuel'],
+  'completion-stopped': ['question-arret-programme'],
+  'completion-reaction': ['reaction-experience'],
+  // Le remerciement avec prénom attend sa génération personnalisée.
+  finish: ['conclusion-seances-adaptees', 'conclusion-profil-evolutif', 'conclusion-premiere-seance'],
 };
 const silence = Object.freeze([]);
 // Tableaux stables : la frappe ou un nouveau rendu ne redémarrent pas le lecteur.
