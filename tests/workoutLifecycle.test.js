@@ -121,7 +121,7 @@ function mount({ mode = "tu", due = false, newUser = false, dev = false } = {}) 
 }
 
 test("UI et vrais effets : lancement unique, récupération et 3/2/1 puis exercice suivant", () => {
-  const ui = mount(); ui.click("En forme"); ui.click("Démarrer");
+  const ui = mount(); ui.click("En forme");
   assert.equal(ui.timers.size, 1);
   ui.advance(60_000); assert.ok(ui.text().includes("Récupération"));
   ui.advance(12_000);
@@ -138,7 +138,7 @@ test("UI et vrais effets : lancement unique, récupération et 3/2/1 puis exerci
 
 for (const dev of [false, true]) for (const paused of [false, true]) for (const target of [1, 2, 5, 6, 8]) {
   test(`UI Suivant ${dev ? "développement" : "production"}, phase ${target}, pause ${paused}`, () => {
-    const ui = mount({ dev }); ui.click("En forme"); ui.click("Démarrer");
+    const ui = mount({ dev }); ui.click("En forme");
     for (let step = 0; step <= target; step++) {
       ui.advance(workoutSteps[step].seconds * 1000); ui.advance(15_000);
       if (step < target && getWorkoutTransition(workoutSteps, step)) ui.advance(7000);
@@ -148,10 +148,10 @@ for (const dev of [false, true]) for (const paused of [false, true]) for (const 
     assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).phase, phase);
     if (paused) ui.click("Pause");
     const buttons = ui.nodes().filter(n => n.type === "button");
-    assert.equal(buttons.length, dev ? 2 : 1);
+    assert.equal(buttons.length, 2);
     const next = buttons.find(n => n.props.children.join("") === "Suivant");
-    assert.equal(!!next, dev);
-    if (dev) {
+    assert.equal(!!next, true);
+    {
       ui.click("Suivant");
       const state = JSON.parse(ui.data.get(DRAFT_KEY));
       assert.equal(state.phase, "exercise"); assert.equal(state.step, target + 1);
@@ -164,15 +164,6 @@ for (const dev of [false, true]) for (const paused of [false, true]) for (const 
       }
       ui.advance(1000);
       assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, state.remaining - 1);
-    } else {
-      const remaining = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
-      assert.equal(remaining, duration - (paused ? 0.4 : 0));
-      if (paused) {
-        ui.advance(60_000); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, remaining);
-        ui.click("Reprendre");
-      }
-      ui.advance(remaining * 1000 - 1); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).phase, phase);
-      ui.advance(1); assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).step, target + 1);
     }
     ui.leave();
   });
@@ -180,7 +171,7 @@ for (const dev of [false, true]) for (const paused of [false, true]) for (const 
 
 for (const mode of ["tu", "vous"]) for (const target of [1, 2, 5, 6]) {
   test(`UI transition ${target}/${mode} : titre, consigne, bonne illustration et prochain exercice sans chrono ni démo`, () => {
-    const ui = mount({ mode }); ui.click("En forme"); ui.click("Démarrer");
+    const ui = mount({ mode }); ui.click("En forme");
     for (let step = 0; step <= target; step++) {
       ui.advance(workoutSteps[step].seconds * 1000);
       assert.ok(ui.text().includes("Récupération"));
@@ -211,9 +202,9 @@ for (const mode of ["tu", "vous"]) for (const target of [1, 2, 5, 6]) {
     assert.equal(ui.nodes().filter((node) => node.type === "svg").length, 0);
     const forbidden = ui.nodes().filter((node) => /(?:timer|countdown|progress-track|exercise-discovery|coach-avatar)/.test(node.props.className ?? ""));
     assert.equal(forbidden.length, 0);
-    assert.equal(ui.nodes().filter((node) => node.type === "button").length, 1);
+    assert.equal(ui.nodes().filter((node) => node.type === "button").length, 2);
     assert.ok(ui.text().includes("Pause"));
-    assert.doesNotMatch(ui.text(), /[0-9]|Récupération|Objectif|Suivant|Consigne et démo/);
+    assert.doesNotMatch(ui.text(), /[0-9]|Récupération|Objectif|Consigne et démo/);
     ui.advance(2000); ui.click("Pause");
     const paused = JSON.parse(ui.data.get(DRAFT_KEY));
     assert.equal(paused.phase, "transition");
@@ -241,7 +232,7 @@ for (const mode of ["tu", "vous"]) for (const target of [1, 2, 5, 6]) {
 }
 
 for (const mode of ["tu", "vous"]) test(`UI hydratation ${mode} : dialogue, image, silence visuel et pauses`, () => {
-  const ui = mount({ mode }); ui.click("En forme"); ui.click("Démarrer");
+  const ui = mount({ mode }); ui.click("En forme");
   for (let step = 0; step <= 8; step++) {
     ui.advance(workoutSteps[step].seconds * 1000);
     assert.ok(ui.text().includes("Récupération"));
@@ -253,7 +244,7 @@ for (const mode of ["tu", "vous"]) test(`UI hydratation ${mode} : dialogue, imag
     : "Moi, j’en profite pour boire un peu… Tu peux en faire autant si tu veux.";
   assert.ok(ui.text().includes(message));
   assert.ok(ui.text().includes("Prochain exercice :Ouverture de la poitrine"));
-  assert.doesNotMatch(ui.text(), /Prépare|[0-9]|Récupération|Objectif|Suivant/);
+  assert.doesNotMatch(ui.text(), /Prépare|[0-9]|Récupération|Objectif/);
   assert.equal(ui.nodes().filter(n => n.type === "h1" || /timer|countdown/.test(n.props.className ?? "")).length, 0);
   const img = ui.nodes().find(n => n.type === "img");
   assert.equal(img.props.src, "/coach/transitions/coach-hydratation.png");
@@ -271,7 +262,7 @@ for (const mode of ["tu", "vous"]) test(`UI hydratation ${mode} : dialogue, imag
   assert.ok(ui.text().includes("Ouverture de la poitrine")); ui.leave();
 });
 
-test("UI première transition atteinte par Suivant avant Démarrer : départ automatique sans Reprendre", () => {
+test("UI première transition après lancement unique : départ automatique sans Reprendre", () => {
   const ui = mount(); ui.click("En forme");
   for (let count = 0; count < 4; count++) ui.click("Suivant");
   assert.ok(ui.text().includes("Installe-toi sur la chaise."));
@@ -284,7 +275,7 @@ test("UI première transition atteinte par Suivant avant Démarrer : départ aut
 });
 
 test("UI transition : interruption/reprise conserve les sept secondes sans saut", () => {
-  const ui = mount(); ui.click("En forme"); ui.click("Démarrer");
+  const ui = mount(); ui.click("En forme");
   ui.advance(60_000 + 15_000 + 75_000 + 15_000);
   ui.advance(2000); ui.visibility("hidden");
   const paused = JSON.parse(ui.data.get(DRAFT_KEY));
@@ -297,7 +288,7 @@ test("UI transition : interruption/reprise conserve les sept secondes sans saut"
 });
 
 for (const mode of ["tu", "vous"]) test(`UI interruption, navigation et reprise ${mode}`, () => {
-  const ui = mount({ mode }); ui.click("En forme"); ui.click("Démarrer"); ui.advance(2500);
+  const ui = mount({ mode }); ui.click("En forme"); ui.advance(2500);
   ui.visibility("hidden");
   assert.ok(ui.text().includes(mode === "vous" ? "Votre séance est en pause." : "Ta séance est en pause."));
   ui.advance(600_000); ui.visibility("visible");
@@ -421,7 +412,7 @@ test("UI finale allégée : ordre du contenu, légende sous le bouton et Coach t
 });
 
 test("UI récupération : état textuel distinct des commandes et libellé corrigé", () => {
-  const ui = mount(); ui.click("En forme"); ui.click("Démarrer"); ui.advance(60_000);
+  const ui = mount(); ui.click("En forme"); ui.advance(60_000);
   const status = ui.nodes().find((node) => node.props.className === "recovery-status");
   assert.equal(status.type, "h2"); assert.equal(status.props.onClick, undefined);
   assert.ok(ui.text().includes("Temps restant de récupération"));
@@ -495,27 +486,25 @@ for (const mode of ["tu", "vous"]) for (const form of ["En forme", "Petite forme
   });
 }
 
-test("UI nouvel utilisateur : découverte obligatoire, animation commune et revue volontaire", () => {
+test("UI nouvel utilisateur : démarrage unique, présentation automatique, Pause et Suivant", () => {
   const ui = mount({ newUser: true });
-  const choices = ui.nodes().filter((node) => node.type === "button" && node.props["aria-pressed"] !== undefined);
-  assert.equal(choices.length, 3);
-  assert.ok(choices.every((node) => node.props["aria-pressed"] === false));
   ui.click("En forme");
+  assert.ok(!ui.text().includes("Commencer la séance"));
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).activeSeconds, 0);
   assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
-  assert.ok(ui.text().includes("Commencer l’exercice"));
-  assert.ok(ui.nodes().some((node) => node.type === "svg" && node.props.className === "exercise-animation"));
-  ui.advance(10_000);
-  ui.click("Commencer l’exercice");
-  ui.advance(2000);
+  assert.ok(ui.nodes().some(n => n.type === "svg"));
+  ui.advance(2000); ui.click("Pause");
+  const remaining = JSON.parse(ui.data.get(DRAFT_KEY)).presentationRemaining;
+  ui.advance(60_000);
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).presentationRemaining, remaining);
+  ui.click("Reprendre"); ui.click("Suivant");
+  assert.ok(ui.text().includes("Temps restant de l’exercice"));
+  assert.deepEqual(JSON.parse(ui.data.get(DISCOVERY_KEY)), [workoutSteps[0].id]);
   ui.click("Consigne et démo");
-  assert.ok(ui.text().includes("Reprendre l’exercice"));
-  assert.ok(!ui.text().includes("PREMIÈRE DÉCOUVERTE"));
-  const before = JSON.parse(ui.data.get(DRAFT_KEY)).remaining;
-  ui.advance(20_000);
-  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).remaining, before);
-  ui.click("Reprendre l’exercice");
-  ui.advance(1000);
-  assert.ok(JSON.parse(ui.data.get(DRAFT_KEY)).remaining < before);
+  assert.ok(ui.text().includes("CONSIGNE ET DÉMO"));
+  ui.advance(15_000);
+  assert.ok(ui.text().includes("Temps restant de l’exercice"));
+  ui.leave();
 });
 
 test("UI fin de séance : destination accueil et historique intact après sortie", () => {
@@ -542,11 +531,44 @@ test("UI fin non enregistrée : sortie bloquée, brouillon conservé pour réess
 });
 
 test("récupération : consigne après le chrono et avant le prochain exercice", () => {
-  const ui = mount(); ui.click("En forme"); ui.click("Démarrer"); ui.advance(60_000);
+  const ui = mount(); ui.click("En forme"); ui.advance(60_000);
   const content = ui.text();
   assert.ok(content.indexOf("Récupération") < content.indexOf("Temps restant de récupération"));
   assert.ok(content.indexOf("Temps restant de récupération") < content.indexOf("00:15"));
   assert.ok(content.indexOf("00:15") < content.indexOf("Respire tranquillement."));
   assert.ok(content.indexOf("Respire tranquillement.") < content.indexOf("Prochain exercice :"));
   assert.ok(content.indexOf("Prochain exercice :") < content.indexOf("Progression globale de la séance"));
+});
+
+for (const newUser of [false, true]) test(`UI parcours automatique intégral, découvertes ${newUser}, commandes constantes`, () => {
+  const ui = mount({newUser}); ui.click("En forme");
+  for (let guard = 0; !ui.text().includes("Séance terminée !") && guard < 10000; guard++) {
+    const controls = ui.nodes().find(n => n.props.className === "workout-actions workout-session-controls");
+    assert.ok(controls);
+    assert.equal(controls.props.children.length, 2);
+    const card = ui.nodes().find(n => n.type === "section" && n.props.className?.includes("workout-card"));
+    assert.ok(card.props.children.includes(controls), "commandes à l’intérieur du cadre blanc");
+    assert.deepEqual(controls.props.children.map(n => n.props.className), ["secondary-button", "secondary-button"]);
+    assert.deepEqual(controls.props.children.map(n => n.props.children.join("")), ["Pause", "Suivant"]);
+    ui.advance(250);
+  }
+  assert.ok(ui.text().includes("Séance terminée !"));
+  assert.equal(JSON.parse(ui.data.get(HISTORY_KEY)).length, 1); ui.leave();
+});
+
+test("UI présentation interrompue : aucun rattrapage ni redémarrage après masquage ou navigation", () => {
+  const ui = mount({newUser: true}); ui.click("En forme");
+  ui.advance(3000); ui.visibility("hidden");
+  const paused = JSON.parse(ui.data.get(DRAFT_KEY));
+  ui.advance(60_000); ui.visibility("visible");
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).presentationRemaining, paused.presentationRemaining);
+  ui.click("REPRENDRE LA SÉANCE");
+  assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+  ui.advance(2000); ui.leave(); ui.advance(60_000); ui.return();
+  const restored = JSON.parse(ui.data.get(DRAFT_KEY)).presentationRemaining;
+  assert.equal(restored, paused.presentationRemaining - 2);
+  ui.click("REPRENDRE LA SÉANCE"); ui.advance(restored * 1000);
+  assert.ok(ui.text().includes("Temps restant de l’exercice"));
+  assert.equal(JSON.parse(ui.data.get(DRAFT_KEY)).activeSeconds, 0);
+  assert.deepEqual(JSON.parse(ui.data.get(DISCOVERY_KEY)), [workoutSteps[0].id]); ui.leave();
 });

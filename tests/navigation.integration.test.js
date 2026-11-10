@@ -145,7 +145,7 @@ for (const mode of ["tu", "vous"]) {
       for (let guard = 0; !ui.text().includes("Séance terminée !") && guard < 40; guard++) {
         if (ui.dom.window.document.querySelector(".workout-hydration")) { await ui.advance(10_000); continue; }
         if (ui.dom.window.document.querySelector(".workout-transition")) { await ui.advance(7000); continue; }
-        await ui.click(ui.text().includes("Commencer l’exercice") ? "Commencer l’exercice" : "Suivant");
+        await ui.click("Suivant");
       }
       assert.ok(ui.text().includes("Séance terminée !"));
       const history = ui.storage.getItem(HISTORY_KEY);
@@ -172,11 +172,13 @@ for (const [label, value] of [["Petite forme", "low"], ["En forme", "normal"], [
       assert.ok(choices.every((button) => button.getAttribute("aria-pressed") === "false"));
       await ui.click(label);
       assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+      assert.ok(!ui.text().includes("Commencer la séance"));
       const draft = JSON.parse(ui.storage.getItem(DRAFT_KEY));
       assert.equal(draft.dayForm, value);
       assert.ok(typeof draft.id === "string" && draft.id.length > 0);
       assert.equal(draft.running, false);
       assert.equal(draft.activeSeconds, 0);
+      assert.equal(draft.started, true);
     } finally { await ui.close(); }
   });
 }

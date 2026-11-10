@@ -124,7 +124,7 @@ function workoutUI(profile) {
     useCallback: (fn) => fn, useMemo: (fn) => fn(), useEffect() {},
   };
   const module = { exports: {} };
-  vm.runInNewContext(uiCode, { module,
+  vm.runInNewContext(uiCode, { module, document: { visibilityState: "visible" },
     require: (name) => name === "react" ? react : require(name),
     localStorage: { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) },
     Date: class extends Date { constructor(...args) { super(...(args.length ? args : [Date.parse("2026-10-18T10:00:00Z") + clock])); } static now() { return Date.parse("2026-10-18T10:00:00Z") + clock; } },
@@ -193,7 +193,7 @@ for (const mode of ["tu", "vous"]) {
     assert.doesNotMatch(ui.text(), /fier|fière|Bravo Antoine|undefined|\bnull\b/);
     const history = JSON.parse(ui.data.get("coachAntoineHistory"));
     assert.equal(history.length, 1);
-    assert.equal(history[0].activeSeconds, 0);
+    assert.ok(history[0].activeSeconds > 0);
     assert.equal(history[0].id, "test-session-6a");
     assert.equal(ui.riffs(), 0);
     ui.click("NON");
@@ -261,10 +261,9 @@ for (const [label, seconds, choice] of [["OUI", 15, "yes"], ["Trop longue", 10, 
   });
 }
 
-test("commandes texte : Démarrer, Pause et Reprendre", () => {
+test("commandes texte : lancement automatique, Pause et Reprendre", () => {
   const ui = workoutUI(profileFor());
   ui.click("En forme");
-  ui.click("Démarrer");
   ui.click("Pause");
   ui.click("Reprendre");
   assert.ok(ui.text().includes("Pause"));

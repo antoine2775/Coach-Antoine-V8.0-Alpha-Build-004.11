@@ -9,6 +9,9 @@ export const WORKOUT_CONFIG = Object.freeze({
   MIN_REST: 10,
   MAX_REST: 30,
   REST_STEP: 5,
+  // Temporisation pédagogique provisoire sans média définitif : hors temps d'effort.
+  // Peut être remplacée par exercise.presentationSeconds ; sans lien avec le cycle SVG.
+  PRESENTATION_FALLBACK_SECONDS: 15,
   COUNTDOWN_SECONDS: 3,
   TICK_MS: 250,
   NEXT_GUARD_MS: 350,

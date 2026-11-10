@@ -645,27 +645,23 @@ test("absence de feedback, OUI et timeout : congé directement sans attente de r
   }
 });
 
-test("première découverte : présentation automatique, aucun temps compté avant confirmation", () => {
-  const h = setup({ newUser: true });
-  assert.equal(h.state().dayForm, null);
-  h.session.chooseDayForm("normal", "forme");
-  assert.equal(h.state().instructionsOpen, true);
-  assert.equal(h.state().firstDiscovery, true);
-  h.session.toggle(); h.session.next(); h.advance(60_000);
-  assert.equal(h.state().step, 0);
+test("première découverte : fin automatique hors temps d’effort et lancement idempotent", () => {
+  const h = setup({ newUser: true }); h.session.chooseDayForm("normal", "forme");
+  h.advance(60_000); assert.equal(h.state().activeSeconds, 0);
+  h.session.start(); h.advance(10_000); h.session.start();
+  assert.equal(h.state().presentationRemaining, 5);
   assert.equal(h.state().remaining, workoutSteps[0].seconds);
+  h.advance(5000); assert.equal(h.state().instructionsOpen, false);
   assert.equal(h.state().activeSeconds, 0);
-  h.session.closeInstructions();
-  assert.equal(h.state().running, true);
   assert.deepEqual(JSON.parse(h.data.get(DISCOVERY_KEY)), [workoutSteps[0].id]);
-  h.advance(1000);
-  assert.equal(h.state().activeSeconds, 1);
+  h.session.next(); assert.equal(h.state().phase, "exercise");
+  h.advance(1000); assert.equal(h.state().activeSeconds, 1);
 });
 
 test("chaque nouvel exercice : récupération puis découverte, sans consommer son chrono", () => {
   const h = setup({ newUser: true });
   h.session.chooseDayForm("low", "forme"); h.session.closeInstructions();
-  h.advance(100_000);
+  h.advance(75_000);
   assert.equal(h.state().step, 1);
   assert.equal(h.state().instructionsOpen, true);
   assert.equal(h.state().remaining, workoutSteps[1].seconds);
@@ -674,25 +670,15 @@ test("chaque nouvel exercice : récupération puis découverte, sans consommer s
   assert.equal(h.state().running, true);
 });
 
-test("découverte connue : pas de répétition automatique ; revue met en pause jusqu'à reprise volontaire", () => {
+test("découverte connue : exécution directe, revue temporaire et restauration exacte", () => {
   const h = setup(); h.start(); h.advance(4500);
   const remaining = h.state().remaining, seconds = h.state().activeSeconds;
-  h.session.openInstructions();
-  assert.equal(h.state().instructionsOpen, true);
-  assert.equal(h.state().firstDiscovery, false);
-  assert.equal(h.state().running, false);
-  h.advance(90_000); h.session.toggle(); h.session.next();
-  assert.equal(h.state().remaining, remaining);
-  assert.equal(h.state().activeSeconds, seconds);
-  h.reopen();
-  assert.equal(h.state().interrupted, true);
-  h.session.resume();
-  assert.equal(h.state().instructionsOpen, true);
-  assert.equal(h.state().running, false);
-  h.session.closeInstructions(); h.advance(1000);
-  assert.equal(h.state().activeSeconds, seconds + 1);
-  h.session.abandon(); h.session.chooseDayForm("normal", "forme");
-  assert.equal(h.state().instructionsOpen, false);
+  h.session.openInstructions(); h.advance(5000); h.session.interrupt(); h.reopen();
+  assert.equal(h.state().interrupted, true); h.session.resume();
+  assert.equal(h.state().presentationRemaining, 10);
+  h.advance(10_000); assert.equal(h.state().instructionsOpen, false);
+  assert.equal(h.state().remaining, remaining); assert.equal(h.state().activeSeconds, seconds);
+  h.advance(1000); assert.equal(h.state().activeSeconds, seconds + 1);
 });
 
 test("nouvelle séance : exercices découverts conservés, première présentation non répétée", () => {
@@ -744,21 +730,14 @@ test("découverte stable entre séances, durées et intensités ; variante techn
   assert.deepEqual(JSON.parse(data.get(DISCOVERY_KEY)), ["exercise-A", "exercise-A:seated-with-band"]);
 });
 
-test("découverte et revue sans limite : aucune fermeture ni reprise après une heure", () => {
-  const h = setup({ newUser: true }); h.session.chooseDayForm("normal", "forme");
-  h.advance(3_600_000);
-  assert.equal(h.state().instructionsOpen, true);
-  assert.equal(h.state().firstDiscovery, true);
-  assert.equal(h.state().remaining, workoutSteps[0].seconds);
-  assert.equal(h.state().activeSeconds, 0);
-  h.session.closeInstructions(); h.advance(1000); h.session.openInstructions();
-  const before = h.state().remaining;
-  h.advance(3_600_000);
-  assert.equal(h.state().instructionsOpen, true);
-  assert.equal(h.state().running, false);
-  assert.equal(h.state().remaining, before);
-  h.session.closeInstructions(); h.advance(1000);
-  assert.equal(h.state().remaining, before - 1);
+test("présentation configurable par exercice, pause sans consommation et Suivant vers exécution", () => {
+  const h = setup({ newUser: true, steps: [{id: "test", seconds: 60, presentationSeconds: 23}] });
+  h.session.chooseDayForm("normal", "forme"); h.session.start(); h.advance(5000);
+  h.session.toggle(); h.advance(3_600_000);
+  assert.equal(h.state().presentationRemaining, 18); assert.equal(h.state().activeSeconds, 0);
+  h.session.next(); assert.equal(h.state().instructionsOpen, false);
+  assert.equal(h.state().running, false); assert.equal(h.state().remaining, 60);
+  h.session.toggle(); h.advance(1000); assert.equal(h.state().remaining, 59);
 });
 
 test("sortie terminée : écran de fin conservé jusqu'au changement de route, aucun brouillon recréé au démontage", () => {
@@ -833,4 +812,23 @@ test("compatibilité distincte : ancien brouillon sans niveau restauré sans att
   restored.abandon(); restored.chooseDayForm("normal");
   assert.equal(restored.getState().id, null);
   assert.equal(h.data.has(DRAFT_KEY), false);
+});
+
+for (const newUser of [false, true]) test(`séance complète automatique, exercices ${newUser ? "inconnus" : "connus"}, un seul lancement`, () => {
+  const h = setup({ newUser }); h.session.chooseDayForm("normal", "forme"); h.session.start();
+  const seen = new Set(), duration = workoutSteps.reduce((n,s) => n + s.seconds, 0);
+  for (let guard = 0; !h.state().finished && guard < 10000; guard++) {
+    seen.add(h.state().step); h.advance(250);
+  }
+  assert.ok(h.state().finished); assert.equal(seen.size, workoutSteps.length);
+  assert.equal(h.state().activeSeconds, duration);
+  assert.equal(JSON.parse(h.data.get(HISTORY_KEY)).length, 1);
+  if (newUser) assert.deepEqual(JSON.parse(h.data.get(DISCOVERY_KEY)), workoutSteps.map(s => s.id));
+  h.session.start(); h.session.tick(); assert.equal(JSON.parse(h.data.get(HISTORY_KEY)).length, 1);
+});
+
+test("exercice sans présentation : exécution directe même inconnu", () => {
+  const h = setup({newUser: true, steps: [{id: "direct", seconds: 10, requiresPresentation: false}]});
+  h.session.chooseDayForm("normal", "forme"); h.session.start();
+  assert.equal(h.state().instructionsOpen, false); h.advance(1000); assert.equal(h.state().remaining, 9);
 });

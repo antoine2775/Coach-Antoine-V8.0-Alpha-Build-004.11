@@ -29,6 +29,10 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   let lastCountdown = "";
   const totalExerciseSeconds = steps.reduce((sum, step) => sum + step.seconds, 0);
 
+  function presentationSeconds(step = state.step) {
+    const value = steps[step].presentationSeconds ?? config.PRESENTATION_FALLBACK_SECONDS ?? 15;
+    return Number.isFinite(value) && value > 0 ? value : 15;
+  }
   function restDuration() {
     try {
       const value = Number(storage.getItem("coachAntoineRestDuration"));
@@ -40,7 +44,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     return { version: 1, id: null, dayForm: null, level: null, phase: "exercise", step: 0,
       remaining: steps[0].seconds, activeSeconds: 0, restDuration: restDuration(), running: false,
       started: false, interrupted: false, earlyCount: 0, reminder: false, finished: null,
-      instructionsOpen: false, firstDiscovery: false, discoveryError: null,
+      instructionsOpen: false, firstDiscovery: false, presentationRemaining: null, discoveryError: null,
       saveStatus: "pending", feedbackPlanned: false, feedbackScreen: "close", feedbackCategories: [], feedbackDetails: {},
       feedbackDeadline: null, acknowledgementDeadline: null, feedbackReply: null, feedbackError: null, draftError: null };
   }
@@ -59,6 +63,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       typeof value.started === "boolean" && Number.isInteger(value.earlyCount) && value.earlyCount >= 0 &&
       (value.instructionsOpen === undefined || typeof value.instructionsOpen === "boolean") &&
       (value.firstDiscovery === undefined || typeof value.firstDiscovery === "boolean") &&
+      (value.presentationRemaining === undefined || value.presentationRemaining === null || finite(value.presentationRemaining)) &&
       typeof value.reminder === "boolean" && ["pending", "saved", "error"].includes(value.saveStatus) &&
       [...FEEDBACK_SCREENS, "acknowledgement", "close"].includes(value.feedbackScreen) &&
       (value.feedbackScreen !== "acknowledgement" || finite(value.acknowledgementDeadline)) &&
@@ -81,6 +86,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       const restored = JSON.parse(raw);
       if (!validDraft(restored)) throw Error("Invalid draft");
       state = { ...empty(), ...restored, running: false, interrupted: restored.phase !== "finished", draftError: null };
+      if (state.instructionsOpen) state.presentationRemaining ??= presentationSeconds();
       state.feedbackCategories = restored.feedbackCategories ?? (restored.feedbackCategory ? [restored.feedbackCategory] : []);
       state.feedbackDetails = restored.feedbackDetails ?? {};
     }
@@ -99,7 +105,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     } catch { state.draftError = "La sauvegarde temporaire a échoué. Gardez cette page ouverte pour conserver votre séance."; }
   }
   function checkpoint(force = false) {
-    const key = `${state.phase}/${state.step}/${displayedSeconds(state.remaining)}/${state.feedbackScreen}`;
+    const key = `${state.phase}/${state.step}/${state.instructionsOpen}/${displayedSeconds(state.presentationRemaining ?? state.remaining)}/${state.feedbackScreen}`;
     if (force || key !== lastCheckpoint) { persist(); lastCheckpoint = key; }
   }
   function enterFeedback(screen) {
@@ -187,7 +193,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
   function presentNewExercise() {
     // Les étapes sans identifiant n'existent que dans certains contrôles techniques.
     const id = getExerciseDiscoveryId(steps[state.step]);
-    if (!id || state.phase !== "exercise" || state.finished) return;
+    if (!id || steps[state.step].requiresPresentation === false || state.phase !== "exercise" || state.finished || state.instructionsOpen) return;
     try {
       if (readDiscoveredExercises(storage).includes(id)) return;
       state.discoveryError = null;
@@ -196,8 +202,22 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     }
     state.instructionsOpen = true;
     state.firstDiscovery = true;
-    state.running = false;
-    anchor = null;
+    state.presentationRemaining = presentationSeconds();
+  }
+  function completePresentation() {
+    if (!state.instructionsOpen) return false;
+    try {
+      const id = getExerciseDiscoveryId(steps[state.step]);
+      if (state.firstDiscovery && id) discoverExercise(storage, id);
+      state.discoveryError = null;
+    } catch {
+      state.discoveryError = "La découverte de cet exercice n’a pas pu être enregistrée. Réessayez avant de commencer.";
+      state.running = false; anchor = null;
+      return false;
+    }
+    state.instructionsOpen = false; state.firstDiscovery = false;
+    state.presentationRemaining = null;
+    return true;
   }
   function settle() {
     if (!state.running || anchor === null || state.finished) return false;
@@ -206,12 +226,16 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
     anchor = time;
     let changed = false;
     while (elapsed > 0 && state.running && !state.finished) {
-      const used = Math.min(elapsed, state.remaining);
-      if (state.phase === "exercise") state.activeSeconds = Math.min(totalExerciseSeconds, state.activeSeconds + used);
-      state.remaining = Math.max(0, state.remaining - used);
+      const presenting = state.instructionsOpen;
+      const used = Math.min(elapsed, presenting ? state.presentationRemaining : state.remaining);
+      if (!presenting && state.phase === "exercise") state.activeSeconds = Math.min(totalExerciseSeconds, state.activeSeconds + used);
+      if (presenting) state.presentationRemaining = Math.max(0, state.presentationRemaining - used);
+      else state.remaining = Math.max(0, state.remaining - used);
       elapsed -= used;
-      if (state.remaining < 1e-7) {
-        transition(); changed = true;
+      if ((presenting ? state.presentationRemaining : state.remaining) < 1e-7) {
+        if (presenting) { if (!completePresentation()) { changed = true; break; } }
+        else transition();
+        changed = true;
         lastNext = time; // Fin naturelle + Suivant au même instant : un seul passage.
       }
     }
@@ -247,19 +271,25 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       try { storage.setItem("coachAntoineDayForm", choice); } catch { /* brouillon signale l'erreur */ }
       checkpoint(true);
     },
+    start() {
+      if (!state.id || state.started || state.finished || state.interrupted) return;
+      state.started = true; state.running = true; anchor = now();
+      checkpoint(true);
+    },
     toggle() {
-      if (!state.id || state.finished || state.interrupted || state.instructionsOpen) return;
+      if (!state.id || state.finished || state.interrupted) return;
       if (state.running) { settle(); state.running = false; anchor = null; }
       else { state.running = true; state.started = true; anchor = now(); }
       checkpoint(true);
     },
     next() {
-      if (!state.id || state.finished || state.interrupted || state.instructionsOpen) return;
+      if (!state.id || state.finished || state.interrupted) return;
       const changed = settle();
-      if (["transition", "hydration"].includes(state.phase)) { checkpoint(); return; }
+
       if (changed || now() - lastNext < config.NEXT_GUARD_MS || state.finished) { checkpoint(); return; }
       lastNext = now();
-      transition(state.phase === "exercise" && displayedSeconds(state.remaining) > config.EARLY_SKIP_REMAINING_SECONDS);
+      if (state.instructionsOpen) completePresentation();
+      else transition(state.phase === "exercise" && displayedSeconds(state.remaining) > config.EARLY_SKIP_REMAINING_SECONDS);
       checkpoint(true);
     },
     // Commande des outils de développement : ne traverse jamais deux phases.
@@ -278,22 +308,15 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       if (!state.id || state.finished || state.interrupted || state.phase !== "exercise") return;
       settle();
       if (state.phase !== "exercise" || state.finished) { checkpoint(true); return; }
-      state.running = false; anchor = null;
       state.instructionsOpen = true;
+      state.presentationRemaining = presentationSeconds();
       checkpoint(true);
     },
     closeInstructions() {
       if (!state.instructionsOpen || state.interrupted || state.finished) return;
-      try {
-        const id = getExerciseDiscoveryId(steps[state.step]);
-        if (id) discoverExercise(storage, id);
-        state.discoveryError = null;
-      } catch {
-        state.discoveryError = "La découverte de cet exercice n’a pas pu être enregistrée. Réessayez avant de commencer.";
-        checkpoint(true); return;
+      if (completePresentation()) {
+        state.running = true; state.started = true; anchor = now();
       }
-      state.instructionsOpen = false; state.firstDiscovery = false;
-      state.running = true; state.started = true; anchor = now();
       checkpoint(true);
     },
     interrupt() {
@@ -306,7 +329,7 @@ export function createWorkoutSession({ storage, now = () => performance.now(),
       if (!state.interrupted || state.finished) return;
       state.interrupted = false;
       presentNewExercise();
-      state.running = state.started && !state.instructionsOpen;
+      state.running = state.started;
       anchor = state.running ? now() : null;
       checkpoint(true);
     },

@@ -17,6 +17,13 @@ const TRANSITION_IMAGES = {
   stand: ["coach-releve-chaise.png", "Coach Antoine se relève de la chaise."],
 };
 
+function WorkoutControls({ running, act }) {
+  return <div className="workout-actions workout-session-controls">
+    <button className="secondary-button" onClick={() => act("toggle")}>{running ? "Pause" : "Reprendre"}</button>
+    <button className="secondary-button" onClick={() => act("next")}>Suivant</button>
+  </div>;
+}
+
 export default function Workout() {
   const { profile, openSplash } = useUserProfile();
   const texts = getPersonalizedTexts(profile);
@@ -33,6 +40,8 @@ export default function Workout() {
       replyControl.pending = false;
       setDayFormReply("");
       act("chooseDayForm", value, profile?.selectedLevel ?? null);
+      act("start");
+      if (document.visibilityState === "hidden") act("interrupt");
     });
   }
   const cur = workoutSteps[s.step];
@@ -159,8 +168,7 @@ export default function Workout() {
       alt="Coach Antoine boit un peu d’eau." />
     <p className="transition-next"><span>{texts.transitionNext}</span><strong>{workoutSteps[s.step + 1]?.name}</strong></p>
     {warning}
-    <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : "Reprendre"}</button>
-    {import.meta.env.DEV && <button className="secondary-button" onClick={() => act("skipTimedPhase")}>Suivant</button>}
+    <WorkoutControls running={s.running} act={act} />
   </section>;
 
   if (s.phase === "transition") return <section className="workout-card workout-transition" aria-labelledby="transition-title">
@@ -171,8 +179,7 @@ export default function Workout() {
       alt={TRANSITION_IMAGES[s.transitionMessage][1]} />
     <p className="transition-next"><span>{texts.transitionNext}</span><strong>{workoutSteps[s.step + 1]?.name}</strong></p>
     {warning}
-    <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : "Reprendre"}</button>
-    {import.meta.env.DEV && <button className="secondary-button" onClick={() => act("skipTimedPhase")}>Suivant</button>}
+    <WorkoutControls running={s.running} act={act} />
   </section>;
 
   const resting = s.phase === "rest";
@@ -181,13 +188,11 @@ export default function Workout() {
     <p className="eyebrow">{s.firstDiscovery ? "PREMIÈRE DÉCOUVERTE" : "CONSIGNE ET DÉMO"}</p>
     <h1 id="exercise-discovery-title">{cur.name}</h1>
     <p className="exercise-instruction">{profile?.addressMode === "vous" ? cur.noteVous : cur.note}</p>
-    <ExerciseAnimation exercise={cur} />
+    <ExerciseAnimation exercise={cur} playing={s.running} />
     <p><strong>Objectif : {target}</strong></p>
     {warning}
     {s.discoveryError && <p role="alert">{s.discoveryError}</p>}
-    <button className="primary-button" onClick={() => act("closeInstructions")}>
-      {s.firstDiscovery ? "Commencer l’exercice" : "Reprendre l’exercice"}
-    </button>
+    <WorkoutControls running={s.running} act={act} />
     <p className="safety-note">{texts.safety}</p>
   </section>;
   return <>
@@ -195,10 +200,7 @@ export default function Workout() {
     <section className="workout-card">
       <CoachAvatar size={88} />
       {warning}
-      <div className="workout-actions">
-        <button className="secondary-button" onClick={() => act("toggle")}>{s.running ? "Pause" : s.started ? "Reprendre" : "Démarrer"}</button>
-        <button className="secondary-button" onClick={() => act("next")}>Suivant</button>
-      </div>
+      <WorkoutControls running={s.running} act={act} />
       {resting ? <>
         <h2 className="recovery-status">Récupération</h2>
         {s.reminder && <p className="early-skip-reminder" role="status">{texts.earlySkipReminder}</p>}

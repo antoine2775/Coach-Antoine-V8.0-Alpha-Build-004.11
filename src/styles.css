@@ -790,3 +790,6 @@
   .workout-transition { gap: 14px; margin-top: 8px; }
   .transition-illustration { height: clamp(160px, 28vh, 230px); }
 }
+
+/* Les commandes utilisent la grille et les dimensions historiques, dans la carte. */
+.workout-session-controls { width: 100%; }

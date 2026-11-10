@@ -58,14 +58,14 @@ test("hydratation : découverte de l’exercice suivant après les dix secondes 
   const h = setup(false); h.enter();
   assert.equal(h.state().instructionsOpen, false);
   h.advance(9999); assert.equal(h.state().instructionsOpen, false);
-  h.advance(1); assert.equal(h.state().firstDiscovery, true); assert.equal(h.state().running, false);
+  h.advance(1); assert.equal(h.state().firstDiscovery, true); assert.equal(h.state().running, true);
   h.session.closeInstructions(); assert.equal(h.state().running, true);
 });
 
 test("hydratation : Suivant de développement préserve la découverte et les interruptions", () => {
   const h = setup(false); h.enter(); h.session.skipTimedPhase();
   assert.equal(h.state().phase, "exercise"); assert.equal(h.state().firstDiscovery, true);
-  assert.equal(h.state().remaining, h.steps[1].seconds); assert.equal(h.state().running, false);
+  assert.equal(h.state().remaining, h.steps[1].seconds); assert.equal(h.state().running, true);
   assert.deepEqual(h.sounds, []);
   const other = setup(); other.enter(); other.session.interrupt(); other.session.skipTimedPhase();
   assert.equal(other.state().phase, "hydration"); assert.equal(other.state().remaining, 10);

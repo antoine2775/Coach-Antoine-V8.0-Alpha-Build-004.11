@@ -90,8 +90,10 @@ for (const mode of ["tu", "vous"]) for (const [label, value, reply] of choices) 
       assert.ok(ui.text().includes(reply));
       await ui.advance(1);
       assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+      assert.ok(!ui.text().includes("Commencer la séance"));
       assert.equal(JSON.parse(ui.storage.getItem(DRAFT_KEY)).dayForm, value);
       assert.equal(ui.timers.size, 0);
+      assert.equal(JSON.parse(ui.storage.getItem(DRAFT_KEY)).started, true);
     } finally { await ui.close(); }
   });
 }
@@ -100,6 +102,7 @@ test("forme : premier exercice déjà découvert, parcours normal après la voix
   const ui = await mount({ discovered: true });
   try {
     await ui.click("En forme"); await ui.event("onstart"); await ui.event("onend"); await ui.advance(800);
+    assert.ok(!ui.text().includes("Commencer la séance"));
     assert.ok(ui.text().includes("Temps restant de l’exercice"));
     assert.ok(!ui.text().includes("PREMIÈRE DÉCOUVERTE"));
   } finally { await ui.close(); }
@@ -118,6 +121,7 @@ for (const failure of ["absent", "throw", "error", "no-start", "no-end"]) {
       assert.ok(ui.text().includes(choices[1][2]));
       await ui.advance(1);
       assert.ok(ui.text().includes("PREMIÈRE DÉCOUVERTE"));
+      assert.ok(!ui.text().includes("Commencer la séance"));
       const draft = ui.storage.getItem(DRAFT_KEY);
       await act(async () => lateEnd?.()); await ui.advance(30000);
       assert.equal(ui.storage.getItem(DRAFT_KEY), draft);
@@ -136,4 +140,18 @@ test("forme : quitter pendant la voix annule la lecture et les délais", async (
   lateEnd();
   assert.equal(ui.timers.size, 0);
   assert.equal(ui.storage.getItem(DRAFT_KEY), null);
+});
+
+test("forme : fin de réponse en arrière-plan conserve la pause de sécurité, sans écran de lancement", async () => {
+  const ui = await mount();
+  try {
+    await ui.click("En forme"); await ui.event("onstart");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    await ui.event("onend"); await ui.advance(800);
+    assert.ok(ui.text().includes("REPRENDRE LA SÉANCE"));
+    assert.ok(!ui.text().includes("Commencer la séance"));
+    const draft = JSON.parse(ui.storage.getItem(DRAFT_KEY));
+    assert.equal(draft.started, true); assert.equal(draft.interrupted, true);
+    assert.equal(draft.activeSeconds, 0);
+  } finally { await ui.close(); }
 });

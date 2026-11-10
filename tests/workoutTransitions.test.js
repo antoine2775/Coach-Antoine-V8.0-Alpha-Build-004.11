@@ -124,7 +124,7 @@ for (const transition of WORKOUT_TRANSITIONS) test(`pause/reprise et restauratio
   h.advance((steps[0].seconds + 15) * 1000); h.advance(2250);
   h.session.toggle();
   const before = h.state();
-  h.advance(60_000); h.session.next();
+  h.advance(60_000);
   assert.equal(h.state().remaining, before.remaining);
   h.reopen();
   assert.equal(h.state().phase, "transition");
@@ -155,7 +155,7 @@ test("première démo conservée, présentée seulement après la transition com
   assert.equal(h.state().phase, "transition"); assert.equal(h.state().instructionsOpen, false);
   h.advance(7000);
   assert.equal(h.state().instructionsOpen, true); assert.equal(h.state().firstDiscovery, true);
-  assert.equal(h.state().running, false); assert.equal(h.state().remaining, steps[1].seconds);
+  assert.equal(h.state().running, true); assert.equal(h.state().remaining, steps[1].seconds);
   h.session.closeInstructions(); assert.equal(h.state().running, true);
 });
 
@@ -166,7 +166,7 @@ for (const transition of WORKOUT_TRANSITIONS) test(`Suivant de développement : 
   h.advance((steps[0].seconds + 15) * 1000);
   h.session.skipTimedPhase();
   assert.equal(h.state().phase, "exercise"); assert.equal(h.state().step, 1);
-  assert.equal(h.state().instructionsOpen, true); assert.equal(h.state().running, false);
+  assert.equal(h.state().instructionsOpen, true); assert.equal(h.state().running, true);
   assert.equal(h.state().remaining, steps[1].seconds);
   h.session.skipTimedPhase(); assert.equal(h.state().remaining, steps[1].seconds);
   assert.deepEqual(h.notes, []); assert.deepEqual(h.sounds, []);
